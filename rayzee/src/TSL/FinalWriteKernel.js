@@ -8,7 +8,7 @@
  */
 
 import {
-	Fn, wgslFn, float, vec2, vec4, int, uint, uvec2,
+	Fn, wgslFn, float, vec2, vec3, vec4, int, uint, uvec2,
 	If, mix, select, texture, textureStore, length,
 	localId, workgroupId,
 } from 'three/tsl';
@@ -20,13 +20,30 @@ import { luminance } from './Common.js';
 
 const WG_SIZE = 16;
 
-// Debug mode 11: NaN/Inf detector — red where the accumulated color is NaN/Inf, black elsewhere.
+// Debug mode 11: NaN/Inf detector — red where the fresh path sample is NaN/Inf, black elsewhere.
 const nanInfToRed = /*@__PURE__*/ wgslFn( `
 	fn nanInfToRed( c: vec3f ) -> vec3f {
 		let isNan = c.x != c.x || c.y != c.y || c.z != c.z;
 		let isInf = abs( c.x ) > 1e30f || abs( c.y ) > 1e30f || abs( c.z ) > 1e30f;
 		if ( isNan || isInf ) { return vec3f( 1.0f, 0.0f, 0.0f ); }
 		return vec3f( 0.0f );
+	}
+` );
+
+// A single non-finite path sample must never enter the persistent accumulation texture. OIDN's
+// convolutional receptive field can spread one NaN across a whole output region, which presents as a
+// sharply bounded black tile when the final-render denoise starts. Preserve the previous mean for a NaN
+// component (zero on the first frame), and bound valid/Inf HDR values consistently with the denoisers.
+const sanitizeRadiance = /*@__PURE__*/ wgslFn( `
+	fn sanitizeRadiance( c: vec3f, fallback: vec3f ) -> vec3f {
+		let fx = select( clamp( fallback.x, 0.0f, 1e7f ), 0.0f, fallback.x != fallback.x );
+		let fy = select( clamp( fallback.y, 0.0f, 1e7f ), 0.0f, fallback.y != fallback.y );
+		let fz = select( clamp( fallback.z, 0.0f, 1e7f ), 0.0f, fallback.z != fallback.z );
+		return vec3f(
+			select( clamp( c.x, 0.0f, 1e7f ), fx, c.x != c.x ),
+			select( clamp( c.y, 0.0f, 1e7f ), fy, c.y != c.y ),
+			select( clamp( c.z, 0.0f, 1e7f ), fz, c.z != c.z )
+		);
 	}
 ` );
 
@@ -83,9 +100,10 @@ export function buildFinalWriteKernel( params ) {
 			const rayID = uint( localGy.mul( renderWidth ).add( gx ) ); // LOCAL path/gBuffer slot
 			const pixelId = uint( gy.mul( renderWidth ).add( gx ) ); // GLOBAL pixel (persistent buffers + texture)
 
-			const sampleColor = readRayRadiance( rayBufferRO, rayID );
-			const finalColor = sampleColor.xyz.toVar();
-			const outputAlpha = select( transparentBackground, sampleColor.w, float( 1.0 ) ).toVar();
+			const rawSampleColor = readRayRadiance( rayBufferRO, rayID );
+			const safeSampleColor = sanitizeRadiance( rawSampleColor.xyz, vec3( 0.0 ) ).toVar();
+			const finalColor = safeSampleColor.toVar();
+			const outputAlpha = select( transparentBackground, rawSampleColor.w, float( 1.0 ) ).toVar();
 
 			// A pixel frozen in a prior frame was skipped by Generate, so its rayBuffer sample is stale — pass
 			// the accumulated colour through unchanged (below) instead of mixing it. Inert unless adaptiveOn.
@@ -112,9 +130,13 @@ export function buildFinalWriteKernel( params ) {
 			If( enableAccumulation.and( cameraIsMoving.not() ).and( frame.greaterThan( uint( 0 ) ) ).and( hasPreviousAccumulated ).and( visMode.notEqual( int( 11 ) ) ), () => {
 
 				const prevAccumSample = texture( prevAccumTexture, prevUV, 0 ).toVar();
+				const prevSafeColor = sanitizeRadiance( prevAccumSample.xyz, vec3( 0.0 ) ).toVar();
+				// Invalid fresh components contribute the current mean, so one bad Monte Carlo path neither
+				// poisons the run nor biases the accumulated value toward black.
+				safeSampleColor.assign( sanitizeRadiance( rawSampleColor.xyz, prevSafeColor ) );
 
 				// Frozen pixels pass prev colour through unchanged (stale sample); active pixels accumulate.
-				finalColor.assign( select( wasFrozen, prevAccumSample.xyz, mix( prevAccumSample.xyz, sampleColor.xyz, accumulationAlpha ) ) );
+				finalColor.assign( select( wasFrozen, prevSafeColor, mix( prevSafeColor, safeSampleColor, accumulationAlpha ) ) );
 				If( auxOn.and( hasPreviousAux ), () => {
 
 					// Albedo averages cleanly (it's a colour).
@@ -142,7 +164,7 @@ export function buildFinalWriteKernel( params ) {
 
 				If( transparentBackground, () => {
 
-					outputAlpha.assign( select( wasFrozen, prevAccumSample.w, mix( prevAccumSample.w, sampleColor.w, accumulationAlpha ) ) );
+					outputAlpha.assign( select( wasFrozen, prevAccumSample.w, mix( prevAccumSample.w, rawSampleColor.w, accumulationAlpha ) ) );
 
 				} );
 
@@ -162,7 +184,7 @@ export function buildFinalWriteKernel( params ) {
 				// Editing this kernel at all costs 11 quality goldens their bit-identical status at
 				// rmse ~1e-4 — measured identical for select() and for an If() branch, so it is compiler
 				// scheduling, not the extra arm. Goldens re-blessed with the change.
-				const sampleLum = luminance( sampleColor.xyz );
+				const sampleLum = luminance( safeSampleColor );
 				const prevM2 = m2BufferRW.element( pixelId ).toVar();
 				const m2 = select(
 					wasFrozen,
@@ -197,7 +219,7 @@ export function buildFinalWriteKernel( params ) {
 					// Sticky within a run, else silhouette pixels flicker in and out of the subject denominator under
 					// AA jitter. Alpha is the only hit/miss signal valid here: the aux G-buffer is denoiser-gated and
 					// the ray flags do not survive to FinalWrite.
-					const hitGeometry = sampleColor.w.greaterThan( float( 0.5 ) );
+					const hitGeometry = rawSampleColor.w.greaterThan( float( 0.5 ) );
 					const wasGeometry = prevWord.bitAnd( uint( 0x40000000 ) ).notEqual( uint( 0 ) );
 					const geometryBit = select(
 						frame.equal( uint( 0 ) ),
@@ -239,15 +261,17 @@ export function buildFinalWriteKernel( params ) {
 
 			} );
 
-			// Debug mode 11: flag NaN/Inf on the accumulated color (red on NaN/Inf, black elsewhere).
+			// Debug mode 11: inspect the untouched path sample; normal rendering sanitizes it above.
 			If( visMode.equal( int( 11 ) ), () => {
 
-				finalColor.assign( nanInfToRed( finalColor ) );
+				finalColor.assign( nanInfToRed( rawSampleColor.xyz ) );
 
 			} );
 
 			const uintCoord = uvec2( uint( gx ), uint( gy ) );
-			textureStore( writeColorTex, uintCoord, vec4( finalColor, outputAlpha ) ).toWriteOnly();
+			// Alpha is a hit/miss channel. A corrupt alpha should remain opaque rather than punching a hole.
+			const safeOutputAlpha = select( outputAlpha.equal( outputAlpha ), outputAlpha.clamp( 0.0, 1.0 ), float( 1.0 ) );
+			textureStore( writeColorTex, uintCoord, vec4( finalColor, safeOutputAlpha ) ).toWriteOnly();
 			If( auxOn, () => {
 
 				textureStore( writeNDTex, uintCoord, finalNormalDepth ).toWriteOnly();

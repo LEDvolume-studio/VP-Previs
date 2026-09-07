@@ -49,13 +49,25 @@ const MODEL_CONFIG = {
 	}
 };
 
-// Stands in for OIDN's inputScale, which oidn-web only applies on its CPU path — the GPUBuffer
-// path leaves the uniform at 1.0. Equivalent because oidn-web does PUForward(col*inputScale) in
-// and PUInverse(..)/inputScale out, so pre-multiplying here and dividing it back out of the
-// output exposure round-trips. Alpha is preserved for _cacheInputAlpha.
-const COLOR_SCALE_WGSL = /* wgsl */`
+// OIDN is convolutional: a single NaN in color or an auxiliary guide can contaminate a large output
+// region and turn an otherwise good final render into a black tile. Sanitize every input at the API
+// boundary while applying the inputScale shim needed by oidn-web's GPUBuffer path. Alpha is preserved.
+const HDR_INPUT_CEILING = 1e7;
+const INPUT_PREPROCESS_WGSL = /* wgsl */`
 @group(0) @binding(0) var<storage, read_write> col: array<vec4<f32>>;
-@group(0) @binding(1) var<uniform> scale: f32;
+@group(0) @binding(1) var<storage, read_write> alb: array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> nrm: array<vec4<f32>>;
+@group(0) @binding(3) var<uniform> scale: f32;
+
+fn hdrValue(v: f32) -> f32 {
+	if (v != v) { return 0.0; }
+	return clamp(v, 0.0, 1e7);
+}
+
+fn unitValue(v: f32, fallback: f32) -> f32 {
+	if (v != v) { return fallback; }
+	return clamp(v, 0.0, 1.0);
+}
 
 @compute @workgroup_size(64)
 fn main( @builtin(global_invocation_id) gid: vec3<u32>,
@@ -63,7 +75,18 @@ fn main( @builtin(global_invocation_id) gid: vec3<u32>,
 	let i = gid.y * nwg.x * 64u + gid.x;
 	if ( i >= arrayLength( &col ) ) { return; }
 	let c = col[ i ];
-	col[ i ] = vec4<f32>( c.xyz * scale, c.w );
+	let a = alb[ i ];
+	let n = nrm[ i ];
+	col[ i ] = vec4<f32>(
+		vec3<f32>(hdrValue(c.x * scale), hdrValue(c.y * scale), hdrValue(c.z * scale)),
+		unitValue(c.w, 1.0)
+	);
+	alb[ i ] = vec4<f32>(
+		unitValue(a.x, 0.0), unitValue(a.y, 0.0), unitValue(a.z, 0.0), unitValue(a.w, 1.0)
+	);
+	nrm[ i ] = vec4<f32>(
+		unitValue(n.x, 0.5), unitValue(n.y, 0.5), unitValue(n.z, 1.0), hdrValue(n.w)
+	);
 }
 `;
 
@@ -74,13 +97,16 @@ const SCALE_MAX_WG_X = 32768;
 // OIDN's autoexposure, mirroring oidn-web's avgLogLum. Whole-frame, so it cannot seam per tile.
 const OIDN_AUTOEXPOSURE_KEY = 0.18;
 
-function oidnInputScale( f32, pixelCount ) {
+export function oidnInputScale( f32, pixelCount ) {
 
 	let logSum = 0;
 	for ( let i = 0; i < pixelCount; i ++ ) {
 
 		const o = i * 4;
-		const lum = 0.212671 * f32[ o ] + 0.71516 * f32[ o + 1 ] + 0.072169 * f32[ o + 2 ];
+		const r = Math.min( Math.max( Number.isNaN( f32[ o ] ) ? 0 : f32[ o ], 0 ), HDR_INPUT_CEILING );
+		const g = Math.min( Math.max( Number.isNaN( f32[ o + 1 ] ) ? 0 : f32[ o + 1 ], 0 ), HDR_INPUT_CEILING );
+		const b = Math.min( Math.max( Number.isNaN( f32[ o + 2 ] ) ? 0 : f32[ o + 2 ], 0 ), HDR_INPUT_CEILING );
+		const lum = 0.212671 * r + 0.71516 * g + 0.072169 * b;
 		logSum += Math.log2( Math.max( lum, 0 ) + 0.0001 );
 
 	}
@@ -137,9 +163,9 @@ export class OIDNDenoiser extends EventDispatcher {
 		this._gpuInputPadBuffer = null;
 		this._gpuInputPaddedRowBytes = 0;
 		// 1.0 until the first readback.
-		this._colorScalePipeline = null;
-		this._colorScaleBindGroup = null;
-		this._colorScaleUniform = null;
+		this._inputPrepPipeline = null;
+		this._inputPrepBindGroup = null;
+		this._inputPrepUniform = null;
 		this._oidnInputScale = 1.0;
 		// Pooled MAP_READ staging buffer for _cacheInputAlpha. Only allocated
 		// when transparent-background readback is used, destroyed on resolution
@@ -605,7 +631,7 @@ export class OIDNDenoiser extends EventDispatcher {
 		// One readback serves the autoexposure scale and the alpha OIDN discards. Must precede the scale.
 		await this._readbackColor( device, width, height );
 		if ( globalThis.__OIDN_NO_INPUT_SCALE ) this._oidnInputScale = 1.0;
-		this._applyColorScale( device, width * height );
+		this._preprocessGPUInputs( device, width * height );
 
 		// Pass GPU storage buffers to oidn-web (GPUBuffer path, well-tested)
 		const config = {
@@ -684,9 +710,9 @@ export class OIDNDenoiser extends EventDispatcher {
 		this._alphaReadbackBuffer?.destroy();
 		this._alphaReadbackMapped = false;
 		// Bind group holds the destroyed buffer; the pipeline is device-scoped and survives.
-		this._colorScaleBindGroup = null;
-		this._colorScaleUniform?.destroy();
-		this._colorScaleUniform = null;
+		this._inputPrepBindGroup = null;
+		this._inputPrepUniform?.destroy();
+		this._inputPrepUniform = null;
 		this._gpuInputBuffers = { color: null, albedo: null, normal: null };
 		this._gpuInputPadBuffer = null;
 		this._gpuInputPaddedRowBytes = 0;
@@ -768,22 +794,22 @@ export class OIDNDenoiser extends EventDispatcher {
 
 	}
 
-	/** Pre-multiplies the colour buffer by the autoexposure scale. */
-	_applyColorScale( device, pixelCount ) {
+	/** Sanitizes all OIDN inputs and pre-multiplies color by the autoexposure scale. */
+	_preprocessGPUInputs( device, pixelCount ) {
 
 		const scale = this._oidnInputScale;
-		if ( ! this._ensureColorScalePipeline( device ) ) return;
+		if ( ! this._ensureInputPrepPipeline( device ) ) return;
 
-		device.queue.writeBuffer( this._colorScaleUniform, 0, new Float32Array( [ scale ] ) );
+		device.queue.writeBuffer( this._inputPrepUniform, 0, new Float32Array( [ scale ] ) );
 
 		const wgTotal = Math.ceil( pixelCount / SCALE_WG_SIZE );
 		const wgX = Math.min( wgTotal, SCALE_MAX_WG_X );
 		const wgY = Math.ceil( wgTotal / wgX );
 
-		const encoder = device.createCommandEncoder( { label: 'oidn-color-scale' } );
-		const pass = encoder.beginComputePass( { label: 'oidn-color-scale' } );
-		pass.setPipeline( this._colorScalePipeline );
-		pass.setBindGroup( 0, this._colorScaleBindGroup );
+		const encoder = device.createCommandEncoder( { label: 'oidn-input-preprocess' } );
+		const pass = encoder.beginComputePass( { label: 'oidn-input-preprocess' } );
+		pass.setPipeline( this._inputPrepPipeline );
+		pass.setBindGroup( 0, this._inputPrepBindGroup );
 		pass.dispatchWorkgroups( wgX, wgY, 1 );
 		pass.end();
 		device.queue.submit( [ encoder.finish() ] );
@@ -791,48 +817,50 @@ export class OIDNDenoiser extends EventDispatcher {
 	}
 
 	/** @returns {GPUComputePipeline|null} */
-	_ensureColorScalePipeline( device ) {
+	_ensureInputPrepPipeline( device ) {
 
-		const buffer = this._gpuInputBuffers.color;
-		if ( ! device || ! buffer ) return null;
+		const { color, albedo, normal } = this._gpuInputBuffers;
+		if ( ! device || ! color || ! albedo || ! normal ) return null;
 
-		if ( ! this._colorScalePipeline ) {
+		if ( ! this._inputPrepPipeline ) {
 
-			this._colorScalePipeline = device.createComputePipeline( {
-				label: 'oidn-color-scale',
+			this._inputPrepPipeline = device.createComputePipeline( {
+				label: 'oidn-input-preprocess',
 				layout: 'auto',
 				compute: {
-					module: device.createShaderModule( { label: 'oidn-color-scale', code: COLOR_SCALE_WGSL } ),
+					module: device.createShaderModule( { label: 'oidn-input-preprocess', code: INPUT_PREPROCESS_WGSL } ),
 					entryPoint: 'main'
 				}
 			} );
 
 		}
 
-		if ( ! this._colorScaleUniform ) {
+		if ( ! this._inputPrepUniform ) {
 
-			this._colorScaleUniform = device.createBuffer( {
-				label: 'oidn-color-scale-uniform',
+			this._inputPrepUniform = device.createBuffer( {
+				label: 'oidn-input-preprocess-uniform',
 				size: 16, // min uniform binding size
 				usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 			} );
 
 		}
 
-		if ( ! this._colorScaleBindGroup ) {
+		if ( ! this._inputPrepBindGroup ) {
 
-			this._colorScaleBindGroup = device.createBindGroup( {
-				label: 'oidn-color-scale',
-				layout: this._colorScalePipeline.getBindGroupLayout( 0 ),
+			this._inputPrepBindGroup = device.createBindGroup( {
+				label: 'oidn-input-preprocess',
+				layout: this._inputPrepPipeline.getBindGroupLayout( 0 ),
 				entries: [
-					{ binding: 0, resource: { buffer } },
-					{ binding: 1, resource: { buffer: this._colorScaleUniform } }
+					{ binding: 0, resource: { buffer: color } },
+					{ binding: 1, resource: { buffer: albedo } },
+					{ binding: 2, resource: { buffer: normal } },
+					{ binding: 3, resource: { buffer: this._inputPrepUniform } }
 				]
 			} );
 
 		}
 
-		return this._colorScalePipeline;
+		return this._inputPrepPipeline;
 
 	}
 
@@ -1157,7 +1185,7 @@ export class OIDNDenoiser extends EventDispatcher {
 		// Dispose resources
 		this.unet?.dispose();
 		this._destroyGPUInputBuffers();
-		this._colorScalePipeline = null;
+		this._inputPrepPipeline = null;
 
 		// Clean up DOM
 		if ( this.output?.parentNode ) {
