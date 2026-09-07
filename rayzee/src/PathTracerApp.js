@@ -925,6 +925,10 @@ export class PathTracerApp extends EventDispatcher {
 
 		try {
 
+			// Browser-owned resources associated with the outgoing scene (for example
+			// per-instance LED video elements) need a deterministic teardown seam before
+			// AssetLoader releases its Three.js objects.
+			this.dispatchEvent( { type: 'SceneWillReplace' } );
 			await loadFn();
 			// A fresh model re-establishes the emissive-sampling auto-default (incremental
 			// rebuilds — add/remove object, texture reprocess — preserve the user's choice).
@@ -1249,9 +1253,11 @@ export class PathTracerApp extends EventDispatcher {
 	 * @param {string} url
 	 * @param {Object} [opts]
 	 * @param {string} [opts.name] - Display name for the scene-object list.
+	 * @param {Function} [opts.prepareRoot] - Optional synchronous preparation performed
+	 * before the scene rebuild (metadata, material, or transform normalization).
 	 * @returns {Promise<string>} the new object's id (Object3D uuid).
 	 */
-	async addModel( url, { name } = {} ) {
+	async addModel( url, { name, prepareRoot } = {} ) {
 
 		if ( this._loadingInProgress ) {
 
@@ -1264,6 +1270,7 @@ export class PathTracerApp extends EventDispatcher {
 		try {
 
 			const { root } = await this.assetLoader.appendModel( url );
+			if ( prepareRoot ) prepareRoot( root );
 			root.userData.__rayzeeSceneObject = true;
 			if ( name ) root.userData.__rayzeeName = name;
 			await this._finishRebuildNoReframe( { type: 'ModelAdded', url, id: root.uuid } );

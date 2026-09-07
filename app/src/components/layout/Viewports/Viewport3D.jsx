@@ -15,6 +15,7 @@ import { generateViewportStyles } from '@/utils/viewport';
 import { PathTracerApp } from 'rayzee';
 import { getApp, setApp } from '@/lib/appProxy';
 import { connectEngineToStore } from '@/lib/EngineAdapter';
+import { LEDVideoManager } from '@/services/LEDVideoManager';
 
 
 const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
@@ -213,6 +214,7 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 
 				// Register with appProxy so getApp() works globally
 				setApp( app );
+				LEDVideoManager.attachApp( app );
 
 				// Bridge engine events → Zustand stores
 				engineCleanupRef.current = connectEngineToStore( app, { useStore, useCameraStore, usePathTracerStore, useAnimationStore, useLightStore } );

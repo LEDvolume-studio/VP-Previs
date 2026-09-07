@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Main LED Volume Wall</title>
+  <desc id="desc">A wide curved LED wall with a blue and magenta test pattern.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#071426"/>
+      <stop offset="1" stop-color="#140926"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#17d7ff"/>
+      <stop offset=".5" stop-color="#6259ff"/>
+      <stop offset="1" stop-color="#ff2faf"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <path d="M66 141C150 88 362 88 446 141v240c-84 53-296 53-380 0z" fill="#03050a" stroke="#354258" stroke-width="12"/>
+  <path d="M84 154c84-44 260-44 344 0v208c-84 44-260 44-344 0z" fill="url(#screen)"/>
+  <g fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="2">
+    <path d="M128 137v242M176 125v267M224 119v279M272 118v281M320 123v270M368 134v247"/>
+    <path d="M84 206c84-43 260-43 344 0M84 258c84-43 260-43 344 0M84 310c84-43 260-43 344 0"/>
+  </g>
+  <text x="256" y="466" fill="#dcecff" font-family="system-ui,sans-serif" font-size="25" text-anchor="middle">MAIN LED VOLUME · 64:27</text>
+</svg>

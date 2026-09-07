@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Square Wild Wall</title>
+  <desc id="desc">A square LED wall with a bright color test pattern.</desc>
+  <defs>
+    <radialGradient id="screen" cx="35%" cy="30%" r="90%">
+      <stop stop-color="#fff469"/>
+      <stop offset=".35" stop-color="#ff673d"/>
+      <stop offset=".7" stop-color="#d51cff"/>
+      <stop offset="1" stop-color="#3425ff"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="#080b16"/>
+  <rect x="72" y="60" width="368" height="368" rx="8" fill="#020308" stroke="#39435c" stroke-width="12"/>
+  <rect x="88" y="76" width="336" height="336" fill="url(#screen)"/>
+  <g fill="none" stroke="#fff" stroke-opacity=".13" stroke-width="2">
+    <path d="M144 76v336M200 76v336M256 76v336M312 76v336M368 76v336"/>
+    <path d="M88 132h336M88 188h336M88 244h336M88 300h336M88 356h336"/>
+  </g>
+  <text x="256" y="470" fill="#f5eaff" font-family="system-ui,sans-serif" font-size="25" text-anchor="middle">SQUARE WILD WALL · 1:1</text>
+</svg>

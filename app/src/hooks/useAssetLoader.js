@@ -89,6 +89,12 @@ export const useAssetLoader = () => {
 		{ successTitle: "Model Added", describe: r => r.modelName, errorTitle: "Error Adding Model" }
 	), [ runModelLoad ] );
 
+	const addLEDModel = useCallback( catalogItem => runModelLoad(
+		{ title: "Adding", status: "Adding LED Wall..." },
+		() => AssetLoaderService.addLEDModel( catalogItem ),
+		{ successTitle: "LED Wall Added", describe: r => r.modelName, errorTitle: "Error Adding LED Wall" }
+	), [ runModelLoad ] );
+
 	// Replace the scene with a model loaded from a URL (e.g. a Sketchfab GLB).
 	const loadModelUrl = useCallback( ( url, name ) => runModelLoad(
 		{ title: "Loading", status: "Loading Model..." },
@@ -101,9 +107,9 @@ export const useAssetLoader = () => {
 
 		const modelFile = MODEL_FILES[ parseInt( value ) ];
 		if ( ! modelFile ) return undefined;
-		return addModel( modelFile.url, modelFile.name );
+		return modelFile.led ? addLEDModel( modelFile ) : addModel( modelFile.url, modelFile.name );
 
-	}, [ addModel ] );
+	}, [ addModel, addLEDModel ] );
 
 	const loadDebugModel = useCallback( ( value ) => runModelLoad(
 		{ title: "Loading", status: "Loading Debug Model...", progress: 0 },
@@ -165,6 +171,7 @@ export const useAssetLoader = () => {
 		loadDebugModel,
 		loadEnvironment,
 		addModel,
+		addLEDModel,
 		appendCatalogModel
 	};
 

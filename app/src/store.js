@@ -4,6 +4,7 @@ import { DEFAULT_STATE, CAMERA_PRESETS, ASVGF_QUALITY_PRESETS, SKY_PRESETS, SSS_
 import { ENGINE_DEFAULTS, PRODUCTION_RENDER_CONFIG, INTERACTIVE_RENDER_CONFIG, VideoRenderManager, deriveAlphaMode } from 'rayzee';
 import { getApp } from '@/lib/appProxy';
 import { VideoEncoderPipeline, checkCodecSupport } from '@/lib/VideoEncoder';
+import { LEDVideoManager } from '@/services/LEDVideoManager';
 
 /**
  * Debounce utility - delays function execution until after wait time has elapsed
@@ -464,7 +465,10 @@ const usePathTracerStore = create( ( set, get ) => ( {
 		val => set( { enablePathTracer: val } ),
 		( val, app ) => {
 
-			app.pathTracerEnabled = val;
+			// This remains the user's preference. LED playback may temporarily force
+			// raster mode, and restores the latest preference when every video stops.
+			LEDVideoManager.attachApp( app );
+			LEDVideoManager.setUserPathTracerPreference( val );
 
 		}
 	),

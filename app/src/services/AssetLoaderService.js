@@ -1,4 +1,5 @@
 import { getApp } from '@/lib/appProxy';
+import { LEDVideoManager, prepareLEDAssetRoot } from '@/services/LEDVideoManager';
 
 /**
  * Service class for handling asset loading operations
@@ -99,6 +100,36 @@ export class AssetLoaderService {
 
 			if ( error.code === 'LOAD_CANCELLED' ) throw error;
 			throw new Error( `Failed to add ${name || 'model'}: ${error.message}` );
+
+		}
+
+	}
+
+	/**
+	 * Append a built-in LED model, normalize its source-stage transform, and attach
+	 * versioned LED metadata before the engine's scene/material rebuild.
+	 * @param {Object} catalogItem - Entry from LED_MODEL_FILES / MODEL_FILES.
+	 */
+	static async addLEDModel( catalogItem ) {
+
+		const app = getApp();
+		if ( ! app ) throw new Error( 'PathTracer app not initialized' );
+		if ( ! catalogItem?.led ) throw new Error( 'Invalid LED catalog item' );
+
+		try {
+
+			LEDVideoManager.attachApp( app );
+			const id = await app.addModel( catalogItem.url, {
+				name: catalogItem.name,
+				prepareRoot: root => prepareLEDAssetRoot( root, catalogItem ),
+			} );
+			LEDVideoManager.syncScene();
+			return { success: true, id, modelName: catalogItem.name };
+
+		} catch ( error ) {
+
+			if ( error.code === 'LOAD_CANCELLED' ) throw error;
+			throw new Error( `Failed to add ${catalogItem.name}: ${error.message}` );
 
 		}
 

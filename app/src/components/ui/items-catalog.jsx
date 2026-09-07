@@ -42,7 +42,7 @@ export const ItemsCatalog = ( {
 	hideSearch = false, // Hide the built-in search/filter row (parent drives search)
 	// Per-card hover actions. When provided, each card reveals these buttons on a
 	// hover scrim instead of loading on click — e.g. Replace/Add for models. Shape:
-	// { key, label, icon?, variant?, onClick(item), disabled?(item) }. onClick may
+	// { key, label, icon?, variant?, onClick(item), disabled?(item), hidden?(item) }. onClick may
 	// be async; the card shows a spinner and blocks re-entry until it settles.
 	actions = null,
 	...props
@@ -645,7 +645,7 @@ export const ItemsCatalog = ( {
 																{busyKey === itemKey ? (
 																	<Loader2 className="h-5 w-5 animate-spin text-white" />
 																) : (
-																	actions.map( ( action ) => (
+																	actions.filter( action => ! action.hidden?.( item ) ).map( ( action ) => (
 																		<Button
 																			key={action.key}
 																			size="sm"

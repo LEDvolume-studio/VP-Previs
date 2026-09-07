@@ -22,6 +22,58 @@ export const ASSETS_BASE_URL = 'https://assets.rayzee.atulmourya.com';
 // aggressive per-client rate limiting (raw.githubusercontent.com returns 429 under load).
 export const GLTF_SAMPLE_ASSETS_BASE = 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models';
 
+export const LED_METADATA_VERSION = 1;
+const LED_ASSETS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models/led`;
+
+// Local, committed LED assets. Physical size and logical canvas size are deliberately
+// separate: geometry remains in metres while placement is resolution-independent.
+export const LED_MODEL_FILES = [
+	{
+		id: 'main-led-volume-wall-v1',
+		name: 'Main LED Volume Wall',
+		url: `${LED_ASSETS_BASE_URL}/main-led-volume-wall.glb`,
+		preview: `${LED_ASSETS_BASE_URL}/main-led-volume-wall.svg`,
+		category: [ 'Virtual Production', 'LED Volume' ],
+		tags: [ 'led', 'video', 'curved', '64:27', 'virtual production' ],
+		led: {
+			version: LED_METADATA_VERSION,
+			assetType: 'main-led-volume-wall',
+			displayMeshName: 'LED_Display_Main',
+			sourceNodeName: 'QuadWall',
+			physicalDimensions: { width: 8.8, height: 4.1, depth: 1.797683 },
+			nativeCanvas: { width: 6144, height: 2592 },
+			maxBrightnessNits: 600,
+			defaultBrightnessNits: 600,
+			uvChannel: 1,
+			uvBounds: { minU: - 0.000700951, maxU: 1, minV: 0.288818359, maxV: 0.7109375 },
+			flipU: true,
+			normalization: { translation: [ 0, 0, 0 ], preserveRotation: true },
+		},
+	},
+	{
+		id: 'square-wild-wall-v1',
+		name: 'Square Wild Wall',
+		url: `${LED_ASSETS_BASE_URL}/square-wild-wall.glb`,
+		preview: `${LED_ASSETS_BASE_URL}/square-wild-wall.svg`,
+		category: [ 'Virtual Production', 'LED Wall' ],
+		tags: [ 'led', 'video', 'flat', 'square', '1:1' ],
+		led: {
+			version: LED_METADATA_VERSION,
+			assetType: 'square-wild-wall',
+			displayMeshName: 'LED_Display_Square',
+			sourceNodeName: 'WildWall',
+			physicalDimensions: { width: 2.4, height: 2.4, depth: 0 },
+			nativeCanvas: { width: 1, height: 1 },
+			maxBrightnessNits: 10000,
+			defaultBrightnessNits: 10000,
+			uvChannel: 1,
+			uvBounds: { minU: 0, maxU: 1, minV: 0, maxV: 1 },
+			flipU: false,
+			normalization: { translation: [ 0, 0, 0 ], preserveRotation: true },
+		},
+	},
+];
+
 // DEFAULT_STATE = engine defaults + UI-only keys
 export const DEFAULT_STATE = {
 	...ENGINE_DEFAULTS,
@@ -75,6 +127,7 @@ export const MODEL_FILES = [
 	{ name: "Rolex Oyster", 		url: `${ASSETS_BASE_URL}/models/watch-rolex-oyster-perpetual.glb`, preview: `${ASSETS_BASE_URL}/models/watch-rolex-oyster-perpetual.png` },
 	{ name: "Suzzane", 				url: `${ASSETS_BASE_URL}/models/suzzane.glb`, preview: `${ASSETS_BASE_URL}/models/suzzane.png` },
 	{ name: "Laser Flashlight", 	url: `${ASSETS_BASE_URL}/models/zenitco_klesch-2p__laser_flashlight.glb`, preview: `${ASSETS_BASE_URL}/models/zenitco_klesch-2p__laser_flashlight.png` },
+	...LED_MODEL_FILES,
 ];
 
 const tagPriority = {

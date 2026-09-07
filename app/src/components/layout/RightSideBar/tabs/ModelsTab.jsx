@@ -18,6 +18,7 @@ const ModelsTab = () => {
 			key: 'replace',
 			label: 'Replace',
 			variant: 'default',
+			hidden: item => !! item.led,
 			onClick: async ( item ) => {
 
 				const index = MODEL_FILES.indexOf( item );

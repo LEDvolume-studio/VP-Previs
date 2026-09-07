@@ -541,7 +541,13 @@ export class GeometryExtractor {
 		if ( ! geometry.attributes.normal ) geometry.computeVertexNormals();
 		const positions = geometry.attributes.position;
 		const normals = geometry.attributes.normal;
-		const uvs = geometry.attributes.uv;
+		// The packed triangle format carries one UV set. Most materials use channel 0,
+		// while specialized single-surface assets (for example an LED display) can
+		// choose another channel explicitly so raster and path tracing agree.
+		const uvChannel = Math.max( 0, Number( mesh.userData?.rayzeeUVChannel ) || 0 );
+		const uvs = uvChannel === 0
+			? geometry.attributes.uv
+			: geometry.attributes[ `uv${uvChannel}` ] || geometry.attributes.uv;
 		const indices = geometry.index ? geometry.index.array : null;
 
 		// Compute matrices
