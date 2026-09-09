@@ -76,6 +76,13 @@ export const usePolyHavenMaterialApplicator = () => {
 
 			// Convert to Three.js material
 			const threeMaterial = await PolyHavenMaterialLoader.createThreeJSMaterial( completeMaterialConfig );
+			threeMaterial.userData.rayzeeCatalogMaterial = {
+				source: 'polyhaven',
+				assetId: completeMaterialConfig.assetId,
+				name: completeMaterialConfig.name,
+				targetResolution: completeMaterialConfig.targetResolution || materialData.targetResolution || '2k',
+				assetVersion: 1,
+			};
 
 			setLoading( {
 				isLoading: true,

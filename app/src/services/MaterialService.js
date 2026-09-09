@@ -113,6 +113,13 @@ export class MaterialService {
 
 		}
 
+		threeMaterial.userData.rayzeeCatalogMaterial = {
+			source: materialInfo.source || 'physicallybased',
+			assetId: String( materialInfo.id || materialInfo.name || 'material' ),
+			name: materialInfo.name || '',
+			assetVersion: 1,
+		};
+
 		// Clear all texture maps to prevent old textures from being used
 		// This is critical when applying a non-textured material to an object that previously had textures
 		const textureMapProperties = [

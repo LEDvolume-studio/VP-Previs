@@ -754,13 +754,13 @@ const MaterialTab = () => {
 				{/* Textures Tab */}
 				<TabsContent value="textures" className="flex-1 min-h-0 overflow-y-auto mx-2 py-2 space-y-3">
 					{/* Hidden file input for texture picker */}
-					<input
+					{import.meta.env.DEV && <input
 						ref={fileInputRef}
 						type="file"
 						accept="image/*"
 						className="hidden"
 						onChange={handleTextureFileSelect}
-					/>
+					/>}
 
 					{availableTextures.length > 0 && (
 						<div className="space-y-1">
@@ -773,14 +773,14 @@ const MaterialTab = () => {
 										onToggle={() => toggleTextureExpanded( name )}
 										actions={
 											<>
-												<button
+												{import.meta.env.DEV && <button
 													className="p-1 rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
 													onClick={() => openTexturePicker( name )}
 													disabled={loadingTexture === name}
 													title="Change texture"
 												>
 													<RefreshCw size={12} className={loadingTexture === name ? 'animate-spin' : ''} />
-												</button>
+												</button>}
 												<button
 													className="p-1 rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
 													onClick={() => handleRemoveTexture( name )}
@@ -816,7 +816,7 @@ const MaterialTab = () => {
 					)}
 
 					{/* Add Texture Section */}
-					{( () => {
+					{import.meta.env.DEV && ( () => {
 
 						const usedSlots = new Set( availableTextures.map( t => t.name ) );
 						const emptySlots = ADDABLE_TEXTURE_SLOTS.filter( s => ! usedSlots.has( s.name ) );
@@ -855,5 +855,4 @@ const MaterialTab = () => {
 };
 
 export default MaterialTab;
-
 

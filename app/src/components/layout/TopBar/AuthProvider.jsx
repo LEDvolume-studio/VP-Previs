@@ -8,10 +8,11 @@ import { createLogger } from 'rayzee';
 
 const log = createLogger( 'auth' );
 
-const supabase = createClient(
-	import.meta.env.VITE_SUPABASE_URL,
-	import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey
+	? createClient( supabaseUrl, supabaseAnonKey )
+	: null;
 
 const AuthProvider = ( { children } ) => {
 
@@ -19,6 +20,8 @@ const AuthProvider = ( { children } ) => {
 	const [ user, setUser ] = useState( null );
 
 	useEffect( () => {
+
+		if ( ! supabase ) return undefined;
 
 		const { data: authListener } = supabase.auth.onAuthStateChange( ( event, session ) => {
 
@@ -38,13 +41,13 @@ const AuthProvider = ( { children } ) => {
 
 	const handleLoginClick = () => {
 
-		setIsAuthModalOpen( true );
+		if ( supabase ) setIsAuthModalOpen( true );
 
 	};
 
 	const handleSignOut = async () => {
 
-		await supabase.auth.signOut();
+		if ( supabase ) await supabase.auth.signOut();
 		setUser( null );
 
 	};
@@ -52,7 +55,7 @@ const AuthProvider = ( { children } ) => {
 	return (
 		<>
 			{children( { user, handleLoginClick, handleSignOut } )}
-			<Dialog open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen}>
+			{supabase && <Dialog open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen}>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Login</DialogTitle>
@@ -64,7 +67,7 @@ const AuthProvider = ( { children } ) => {
 						redirectTo={`${window.location.href}`}
 					/>
 				</DialogContent>
-			</Dialog>
+			</Dialog>}
 		</>
 	);
 

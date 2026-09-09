@@ -21,7 +21,9 @@ export const useAutoFitScale = ( {
 	minScale = 25,
 	maxScale = 300,
 	manualThreshold = 5,
-	enabled = true
+	enabled = true,
+	persistedViewport = null,
+	onViewportChange = null,
 } ) => {
 
 	const [ viewportScale, setViewportScale ] = useState( 100 );
@@ -30,6 +32,18 @@ export const useAutoFitScale = ( {
 
 	// Use ref to track manual scale synchronously to avoid race conditions with ResizeObserver
 	const isManualScaleRef = useRef( false );
+	const onViewportChangeRef = useRef( onViewportChange );
+	onViewportChangeRef.current = onViewportChange;
+
+	useEffect( () => {
+
+		if ( ! persistedViewport ) return;
+		const manual = persistedViewport.mode === 'manual';
+		isManualScaleRef.current = manual;
+		setIsManualScale( manual );
+		if ( manual && Number.isFinite( persistedViewport.scale ) ) setViewportScale( persistedViewport.scale );
+
+	}, [ persistedViewport ] );
 
 	// Calculate best fit scale based on available space
 	const calculateBestFitScale = useCallback( () => {
@@ -106,6 +120,7 @@ export const useAutoFitScale = ( {
 		// Update state
 		setViewportScale( scale );
 		setIsManualScale( isManual );
+		onViewportChangeRef.current?.( { mode: isManual ? 'manual' : 'auto', scale } );
 
 	}, [ autoFitScale, manualThreshold ] );
 
@@ -118,6 +133,7 @@ export const useAutoFitScale = ( {
 		// Update state
 		setViewportScale( autoFitScale );
 		setIsManualScale( false );
+		onViewportChangeRef.current?.( { mode: 'auto', scale: autoFitScale } );
 
 	}, [ autoFitScale ] );
 

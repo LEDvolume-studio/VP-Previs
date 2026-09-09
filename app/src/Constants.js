@@ -23,6 +23,7 @@ export const ASSETS_BASE_URL = 'https://assets.rayzee.atulmourya.com';
 export const GLTF_SAMPLE_ASSETS_BASE = 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models';
 
 export const LED_METADATA_VERSION = 1;
+const LOCAL_MODELS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models`;
 const LED_ASSETS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models/led`;
 
 // Local, committed LED assets. Physical size and logical canvas size are deliberately
@@ -30,6 +31,7 @@ const LED_ASSETS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models/led`;
 export const LED_MODEL_FILES = [
 	{
 		id: 'main-led-volume-wall-v1',
+		assetVersion: 3,
 		name: 'Main LED Volume Wall',
 		url: `${LED_ASSETS_BASE_URL}/main-led-volume-wall.glb`,
 		preview: `${LED_ASSETS_BASE_URL}/main-led-volume-wall.svg`,
@@ -52,6 +54,7 @@ export const LED_MODEL_FILES = [
 	},
 	{
 		id: 'square-wild-wall-v1',
+		assetVersion: 3,
 		name: 'Square Wild Wall',
 		url: `${LED_ASSETS_BASE_URL}/square-wild-wall.glb`,
 		preview: `${LED_ASSETS_BASE_URL}/square-wild-wall.svg`,
@@ -87,8 +90,20 @@ export const DEFAULT_STATE = {
 	zoomToCursor: true,
 };
 
+const stableCatalogId = ( prefix, name ) => `${prefix}-${name.toLowerCase()
+	.normalize( 'NFKD' )
+	.replace( /[^a-z0-9]+/g, '-' )
+	.replace( /^-|-$/g, '' )}`;
+
 // export const MODEL_BASE_URL = 'https://raw.githubusercontent.com/gkjohnson/3d-demo-data/main/models/';
 export const MODEL_FILES = [
+	{
+		name: 'Studio One',
+		url: `${LOCAL_MODELS_BASE_URL}/studio-one.glb`,
+		preview: `${LOCAL_MODELS_BASE_URL}/studio-one.svg`,
+		category: [ 'Studio', 'Environment' ],
+		tags: [ 'studio', 'environment', 'interior', 'rayzee' ],
+	},
 	{ name: "Cornell Box 1", 		url: `${ASSETS_BASE_URL}/models/CornellBox1.glb`, preview: `${ASSETS_BASE_URL}/models/CornellBox1.png` },
 	{ name: "Gameboy", 				url: `${ASSETS_BASE_URL}/models/Gameboy.glb`, preview: `${ASSETS_BASE_URL}/models/Gameboy.png` },
 	{ name: "Stanford Bunny", 		url: `${ASSETS_BASE_URL}/models/StanfordBunny.glb`, preview: `${ASSETS_BASE_URL}/models/StanfordBunny.png` },
@@ -128,7 +143,11 @@ export const MODEL_FILES = [
 	{ name: "Suzzane", 				url: `${ASSETS_BASE_URL}/models/suzzane.glb`, preview: `${ASSETS_BASE_URL}/models/suzzane.png` },
 	{ name: "Laser Flashlight", 	url: `${ASSETS_BASE_URL}/models/zenitco_klesch-2p__laser_flashlight.glb`, preview: `${ASSETS_BASE_URL}/models/zenitco_klesch-2p__laser_flashlight.png` },
 	...LED_MODEL_FILES,
-];
+].map( item => ( {
+	...item,
+	id: item.id || stableCatalogId( 'model', item.name ),
+	assetVersion: item.assetVersion || 1,
+} ) );
 
 const tagPriority = {
 	'pbrtest': 1,
@@ -177,6 +196,8 @@ export const DEBUG_MODELS = debugModelsData
 		}
 
 		return {
+			id: stableCatalogId( 'debug-model', model.name ),
+			assetVersion: 1,
 			name: model.name,
 			label: model.label,
 			url: `${GLTF_SAMPLE_ASSETS_BASE}/${model.name}/${variantDir}/${variantFile}`,

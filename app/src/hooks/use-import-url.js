@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useToggle } from '@/hooks/useToggle';
 import { useToast } from '@/hooks/use-toast';
 import { getApp } from '@/lib/appProxy';
+import { projectSession } from '@/services/projects/ProjectSession';
 
 export function useImportUrl() {
 
@@ -66,7 +67,8 @@ export function useImportUrl() {
 		const app = getApp();
 		if ( app ) {
 
-			app.loadModel( importUrl )
+			projectSession.enterScratch()
+				.then( () => app.loadModel( importUrl ) )
 				.then( () => {
 
 					setIsImporting( false );

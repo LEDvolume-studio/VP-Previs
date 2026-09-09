@@ -585,6 +585,92 @@ export class CameraManager extends EventDispatcher {
 
 	}
 
+	/** Return a JSON-safe snapshot of every camera and the live render view. */
+	getProjectState() {
+
+		const vector = value => value?.toArray?.() || null;
+		const effects = value => value ? {
+			...value,
+			afScreenPoint: value.afScreenPoint ? { ...value.afScreenPoint } : undefined,
+		} : null;
+		const describe = camera => ( {
+			name: camera.name || '',
+			position: vector( camera.position ),
+			quaternion: vector( camera.quaternion ),
+			fov: camera.fov,
+			near: camera.near,
+			far: camera.far,
+			isUserCamera: !! camera.userData?.__rayzeeUserCamera,
+			orbitTarget: vector( camera.userData?.__rayzeeOrbitTarget ),
+			effects: effects( camera.userData?.__rayzeeEffects ),
+		} );
+
+		return {
+			activeIndex: this.currentCameraIndex,
+			active: {
+				...describe( this.camera ),
+				orbitTarget: vector( this.controls?.target ),
+				effects: effects( this._captureEffects() ),
+			},
+			cameras: this.cameras.map( describe ),
+			autoFocusMode: this.autoFocusMode,
+			afScreenPoint: { ...this.afScreenPoint },
+			afSmoothingFactor: this.afSmoothingFactor,
+		};
+
+	}
+
+	/** Restore a snapshot produced by getProjectState after scene cameras are loaded. */
+	restoreProjectState( state ) {
+
+		if ( ! state?.active ) return false;
+		const apply = ( camera, descriptor ) => {
+
+			if ( ! camera || ! descriptor ) return;
+			if ( descriptor.position ) camera.position.fromArray( descriptor.position );
+			if ( descriptor.quaternion ) camera.quaternion.fromArray( descriptor.quaternion );
+			if ( Number.isFinite( descriptor.fov ) ) camera.fov = descriptor.fov;
+			if ( Number.isFinite( descriptor.near ) ) camera.near = descriptor.near;
+			if ( Number.isFinite( descriptor.far ) ) camera.far = descriptor.far;
+			if ( descriptor.name ) camera.name = descriptor.name;
+			camera.userData.__rayzeeEffects = descriptor.effects ? { ...descriptor.effects } : null;
+			if ( descriptor.orbitTarget ) camera.userData.__rayzeeOrbitTarget = new Vector3().fromArray( descriptor.orbitTarget );
+			camera.updateProjectionMatrix();
+			camera.updateMatrixWorld( true );
+
+		};
+
+		const saved = Array.isArray( state.cameras ) ? state.cameras : [];
+		const sourceCameraCount = this.cameras.filter( camera => ! camera.userData?.__rayzeeUserCamera ).length;
+		this.cameras = this.cameras.slice( 0, sourceCameraCount );
+		for ( let i = 0; i < Math.min( sourceCameraCount, saved.length ); i ++ ) apply( this.cameras[ i ], saved[ i ] );
+		for ( const descriptor of saved.filter( camera => camera.isUserCamera ) ) {
+
+			const camera = new PerspectiveCamera();
+			camera.userData.__rayzeeUserCamera = true;
+			apply( camera, descriptor );
+			this.cameras.push( camera );
+
+		}
+
+		this.autoFocusMode = state.autoFocusMode || 'manual';
+		if ( state.afScreenPoint ) this.afScreenPoint = { ...state.afScreenPoint };
+		if ( Number.isFinite( state.afSmoothingFactor ) ) this.afSmoothingFactor = state.afSmoothingFactor;
+		apply( this.camera, state.active );
+		if ( state.active.orbitTarget && this.controls ) {
+
+			this.controls.target.fromArray( state.active.orbitTarget );
+			this.controls.update();
+
+		}
+
+		this._applyEffects( state.active.effects );
+		this.currentCameraIndex = Math.min( Math.max( 0, state.activeIndex || 0 ), this.cameras.length - 1 );
+		this._onReset?.();
+		return true;
+
+	}
+
 	dispose() {
 
 		this.controls?.dispose();

@@ -10,9 +10,11 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { useStore, usePathTracerStore } from '@/store';
+import { useStore } from '@/store';
 import { getApp } from '@/lib/appProxy';
 import { createLogger } from 'rayzee';
+import { projectSession } from '@/services/projects/ProjectSession';
+import { useProjectStore } from '@/services/projects/projectStore';
 
 const log = createLogger( 'app' );
 
@@ -20,6 +22,8 @@ const App = () => {
 
 	// Memoized debounced resize handler to prevent recreation on every render
 	const timeoutRef = useRef( null );
+	const panelGroupRef = useRef( null );
+	const panelLayout = useProjectStore( state => state.activeProject?.workspace?.panelLayout );
 	const handleResize = useCallback( () => {
 
 		if ( timeoutRef.current ) {
@@ -35,6 +39,12 @@ const App = () => {
 		}, 500 );
 
 	}, [] );
+
+	useEffect( () => {
+
+		if ( Array.isArray( panelLayout ) && panelLayout.length === 3 ) panelGroupRef.current?.setLayout?.( panelLayout );
+
+	}, [ panelLayout ] );
 
 	useEffect( () => {
 
@@ -73,6 +83,13 @@ const App = () => {
 
 			const noModifiers = ! event.ctrlKey && ! event.altKey && ! event.shiftKey && ! event.metaKey;
 			const hasSelection = !! useStore.getState().selectedObject;
+			if ( ( event.ctrlKey || event.metaKey ) && event.key.toLowerCase() === 's' ) {
+
+				event.preventDefault();
+				projectSession.flush().catch( error => log.error( 'project save failed:', error ) );
+				return;
+
+			}
 
 			// Prevent default behavior only for our specific shortcuts
 			switch ( event.key ) {
@@ -219,7 +236,12 @@ const App = () => {
 		<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
 			<div className="flex flex-col w-screen h-screen">
 				<TopBar />
-				<ResizablePanelGroup direction="horizontal" className="flex flex-1 overflow-hidden h-full">
+				<ResizablePanelGroup
+					ref={panelGroupRef}
+					direction="horizontal"
+					className="flex flex-1 overflow-hidden h-full"
+					onLayout={layout => projectSession.setWorkspace( { panelLayout: layout } )}
+				>
 					<ResizablePanel onResize={handleResize} className="min-w-[200px]" defaultSize={20}>
 						<LeftSidebar />
 					</ResizablePanel>

@@ -17,6 +17,7 @@ export class LightManager extends EventDispatcher {
 	 * @param {import('../Stages/PathTracer.js').PathTracer} pathTracer
 	 * @param {Object} [options]
 	 * @param {Function} [options.onReset] - Callback to reset accumulation after light changes
+	 * @param {Function} [options.onChange] - Callback to synchronize secondary renderers
 	 */
 	constructor( scene, sceneHelpers, pathTracer, options = {} ) {
 
@@ -26,6 +27,7 @@ export class LightManager extends EventDispatcher {
 		this.sceneHelpers = sceneHelpers;
 		this.pathTracer = pathTracer;
 		this._onReset = options.onReset || null;
+		this._onChange = options.onChange || null;
 
 	}
 
@@ -35,7 +37,7 @@ export class LightManager extends EventDispatcher {
 	 * @param {string} type - 'DirectionalLight' | 'PointLight' | 'SpotLight' | 'RectAreaLight'
 	 * @returns {Object|null} Light descriptor or null if type is invalid
 	 */
-	addLight( type ) {
+	addLight( type, { deferUpdate = false } = {} ) {
 
 		const defaults = {
 			// Power in Watts (Blender-style) for point/spot/area; Sun is W/m² strength.
@@ -90,9 +92,13 @@ export class LightManager extends EventDispatcher {
 		const count = this.scene.getObjectsByProperty( 'isLight', true ).length;
 		light.name = `${type.replace( 'Light', '' )} ${count + 1}`;
 		this.scene.add( light );
-		this.updateLights();
-		this._syncHelpers();
-		this._onReset?.();
+		if ( ! deferUpdate ) {
+
+			this.updateLights();
+			this._syncHelpers();
+			this._onReset?.();
+
+		}
 
 		return this._buildDescriptor( light );
 
@@ -139,6 +145,71 @@ export class LightManager extends EventDispatcher {
 
 	}
 
+	getProjectState() {
+
+		return this.getLights();
+
+	}
+
+	/** Replace editor lights from JSON-safe descriptors in one reset. */
+	replaceProjectState( descriptors = [] ) {
+
+		this.sceneHelpers.clear();
+		this._removeAllLights();
+		for ( const descriptor of descriptors ) {
+
+			const created = this.addLight( descriptor.type, { deferUpdate: true } );
+			const light = created ? this.scene.getObjectByProperty( 'uuid', created.uuid ) : null;
+			if ( ! light ) continue;
+			light.name = descriptor.name || light.name;
+			light.visible = descriptor.visible !== false;
+			if ( Number.isFinite( descriptor.intensity ) ) light.intensity = descriptor.intensity;
+			if ( descriptor.color ) light.color.set( descriptor.color );
+			if ( descriptor.position ) light.position.fromArray( descriptor.position );
+			for ( const key of [ 'temperature', 'useTemperature', 'exposure' ] ) {
+
+				if ( descriptor[ key ] !== undefined ) light.userData[ key ] = descriptor[ key ];
+
+			}
+
+			if ( light.isRectAreaLight ) {
+
+				if ( Number.isFinite( descriptor.width ) ) light.width = descriptor.width;
+				if ( Number.isFinite( descriptor.height ) ) light.height = descriptor.height;
+				light.userData.normalize = descriptor.normalize ?? true;
+				if ( Number.isFinite( descriptor.spread ) ) light.userData.spread = MathUtils.degToRad( descriptor.spread );
+				if ( descriptor.shape ) light.userData.shape = descriptor.shape;
+				if ( descriptor.target ) light.lookAt( ...descriptor.target );
+
+			} else if ( light.isSpotLight ) {
+
+				if ( Number.isFinite( descriptor.angle ) ) light.angle = MathUtils.degToRad( descriptor.angle );
+				if ( Number.isFinite( descriptor.distance ) ) light.distance = descriptor.distance;
+				if ( Number.isFinite( descriptor.penumbra ) ) light.penumbra = descriptor.penumbra;
+				if ( Number.isFinite( descriptor.decay ) ) light.decay = descriptor.decay;
+				if ( descriptor.target ) light.target.position.fromArray( descriptor.target );
+
+			} else if ( light.isPointLight ) {
+
+				if ( Number.isFinite( descriptor.distance ) ) light.distance = descriptor.distance;
+				if ( Number.isFinite( descriptor.decay ) ) light.decay = descriptor.decay;
+
+			} else if ( light.isDirectionalLight ) {
+
+				if ( Number.isFinite( descriptor.angle ) ) light.userData.angle = MathUtils.degToRad( descriptor.angle );
+				if ( descriptor.target ) light.target.position.fromArray( descriptor.target );
+
+			}
+
+		}
+
+		this.updateLights();
+		this._syncHelpers();
+		this._onReset?.();
+		return this.getLights();
+
+	}
+
 	/**
 	 * Reprocesses all scene lights and updates the path tracer uniform buffers,
 	 * and refreshes any visible helper gizmos so they reflect parameter changes
@@ -147,6 +218,7 @@ export class LightManager extends EventDispatcher {
 	updateLights() {
 
 		this.pathTracer?.updateLights();
+		this._onChange?.();
 		if ( this.sceneHelpers?.visible ) this.sceneHelpers.update();
 
 	}
@@ -160,7 +232,8 @@ export class LightManager extends EventDispatcher {
 
 		this._removeAllLights();
 
-		const sourceLights = meshScene.getObjectsByProperty( 'isLight', true );
+		const sourceLights = meshScene.getObjectsByProperty( 'isLight', true )
+			.filter( light => ! light.userData?.__rayzeeRasterLightProxy );
 
 		if ( ! sourceLights || sourceLights.length === 0 ) {
 
@@ -283,6 +356,7 @@ export class LightManager extends EventDispatcher {
 
 		// Drop external refs so GC can collect scene/pathTracer
 		this._onReset = null;
+		this._onChange = null;
 		this.pathTracer = null;
 		this.sceneHelpers = null;
 		this.scene = null;

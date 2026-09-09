@@ -2055,6 +2055,7 @@ const useMaterialStore = create( ( set, get ) => ( {
 			}
 
 			app.setMaterialProperty( idx, prop, val );
+			window.dispatchEvent( new Event( 'MaterialUpdate' ) );
 
 
 		} catch ( error ) {
@@ -2198,6 +2199,7 @@ const useMaterialStore = create( ( set, get ) => ( {
 
 		// Update the appropriate transform in material data texture
 		app.setTextureTransform( materialIndex, textureName, transform );
+		window.dispatchEvent( new Event( 'MaterialUpdate' ) );
 
 	},
 
@@ -2491,6 +2493,8 @@ const useMaterialStore = create( ( set, get ) => ( {
 		let url;
 		try {
 
+			const { projectSession } = await import( '@/services/projects/ProjectSession' );
+			await projectSession.enterScratch();
 			const { TextureLoader, RepeatWrapping, SRGBColorSpace, LinearSRGBColorSpace } = await import( 'three' );
 			url = URL.createObjectURL( file );
 			const loader = new TextureLoader();

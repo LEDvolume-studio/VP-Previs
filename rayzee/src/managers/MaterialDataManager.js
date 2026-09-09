@@ -9,7 +9,7 @@
 
 import { StorageInstancedBufferAttribute } from 'three/webgpu';
 import { storage } from 'three/tsl';
-import { MATERIAL_DATA_LAYOUT as M, TRIANGLE_DATA_LAYOUT as T, normalizeAttenuationDistance } from '../EngineDefaults.js';
+import { MATERIAL_DATA_LAYOUT as M, TEXTURE_CONSTANTS, TRIANGLE_DATA_LAYOUT as T, normalizeAttenuationDistance } from '../EngineDefaults.js';
 import { createLogger, fmt } from '../utils/Logger.js';
 
 const log = createLogger( 'material' );
@@ -197,6 +197,57 @@ export class MaterialDataManager {
 			srgbBuckets: this.srgbBuckets,
 			linearBuckets: this.linearBuckets,
 		};
+
+	}
+
+	/**
+	 * Resolve a source texture to its current packed material-texture array layer.
+	 * Dynamic hosts can use the dimensions to resize a replacement frame before upload.
+	 *
+	 * @param {import('three').Texture|null} texture
+	 * @param {boolean} isSrgb
+	 * @returns {{width:number,height:number,bucket:number,layer:number}|null}
+	 */
+	getTextureLayerInfo( texture, isSrgb = true ) {
+
+		const packed = this.getPackedTextureIndex( texture, isSrgb );
+		if ( packed < 0 ) return null;
+		const bucket = Math.floor( packed / TEXTURE_CONSTANTS.BUCKET_LAYER_STRIDE );
+		const layer = packed % TEXTURE_CONSTANTS.BUCKET_LAYER_STRIDE;
+		const arrayTexture = ( isSrgb ? this.srgbBuckets : this.linearBuckets )?.[ bucket ];
+		if ( ! arrayTexture?.image?.data || layer >= arrayTexture.image.depth ) return null;
+		return {
+			width: arrayTexture.image.width,
+			height: arrayTexture.image.height,
+			bucket,
+			layer,
+		};
+
+	}
+
+	/**
+	 * Replace one existing material-texture array layer in place. DataArrayTexture's
+	 * layer update registry keeps the GPU upload scoped to this layer instead of the
+	 * complete bucket, which is important for live sources such as decoded video.
+	 *
+	 * @param {import('three').Texture|null} texture
+	 * @param {ArrayBufferView} pixels tightly packed RGBA8 pixels
+	 * @param {boolean} isSrgb
+	 * @returns {boolean} whether the layer was updated
+	 */
+	updateTextureLayer( texture, pixels, isSrgb = true ) {
+
+		const info = this.getTextureLayerInfo( texture, isSrgb );
+		if ( ! info || ! ArrayBuffer.isView( pixels ) ) return false;
+		const arrayTexture = ( isSrgb ? this.srgbBuckets : this.linearBuckets )[ info.bucket ];
+		const layerSize = info.width * info.height * 4;
+		if ( pixels.byteLength !== layerSize ) return false;
+
+		arrayTexture.image.data.set( new Uint8Array( pixels.buffer, pixels.byteOffset, pixels.byteLength ), info.layer * layerSize );
+		arrayTexture.addLayerUpdate?.( info.layer );
+		arrayTexture.needsUpdate = true;
+		this._notifyReset();
+		return true;
 
 	}
 

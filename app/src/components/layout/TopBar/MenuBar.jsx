@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { getApp } from '@/lib/appProxy';
+import { projectSession } from '@/services/projects/ProjectSession';
+import { useProjectStore } from '@/services/projects/projectStore';
 import {
 	Menubar,
 	MenubarContent,
@@ -14,10 +16,27 @@ const MenuBar = ( { onOpenImportModal } ) => {
 
 	const fileInputRef = useRef( null );
 	const { toast } = useToast();
+	const setManagerOpen = useProjectStore( state => state.setManagerOpen );
 
 	const handleOpenFile = () => {
 
 		fileInputRef.current?.click();
+
+	};
+
+	const handleSaveAsDefault = async () => {
+
+		if ( ! window.confirm( 'Replace the default project with the current scene? Existing working projects will not be changed.' ) ) return;
+		try {
+
+			await projectSession.saveCurrentAsDefault();
+			toast( { title: 'Default project updated', description: 'Your next change will be saved as a new working project.' } );
+
+		} catch ( error ) {
+
+			toast( { title: 'Could not update default project', description: error.message, variant: 'destructive' } );
+
+		}
 
 	};
 
@@ -50,6 +69,7 @@ const MenuBar = ( { onOpenImportModal } ) => {
 			const app = getApp();
 			if ( app ) {
 
+				await projectSession.enterScratch();
 				await app.loadFile( file );
 
 				toast( {
@@ -98,10 +118,15 @@ const MenuBar = ( { onOpenImportModal } ) => {
 				<MenubarMenu>
 					<MenubarTrigger className="text-muted-foreground text-sm font-medium hover:text-foreground">File</MenubarTrigger>
 					<MenubarContent>
-						<MenubarItem onSelect={handleOpenFile} className="flex items-center">Open</MenubarItem>
-						<MenubarItem onSelect={onOpenImportModal} className="flex items-center">Import from URL</MenubarItem>
-						<MenubarItem disabled className="flex items-center">Save</MenubarItem>
+						<MenubarItem onSelect={() => setManagerOpen( true )}>Projects…</MenubarItem>
+						<MenubarItem onSelect={() => projectSession.create()}>New Project</MenubarItem>
+						<MenubarItem onSelect={() => projectSession.flush()}>Save Project</MenubarItem>
+						<MenubarItem onSelect={handleSaveAsDefault}>Save Current Scene as Default Project</MenubarItem>
+						<MenubarItem onSelect={() => projectSession.importProject()}>Import Project…</MenubarItem>
+						<MenubarItem onSelect={() => projectSession.exportProject()}>Export Project…</MenubarItem>
 						<MenubarSeparator />
+						{import.meta.env.DEV && <MenubarItem onSelect={handleOpenFile} className="flex items-center">Developer: Open Model…</MenubarItem>}
+						{import.meta.env.DEV && <MenubarItem onSelect={onOpenImportModal} className="flex items-center">Developer: Import URL…</MenubarItem>}
 					</MenubarContent>
 				</MenubarMenu>
 

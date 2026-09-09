@@ -5,11 +5,22 @@ import { getApp } from '@/lib/appProxy';
 export const LED_NITS_PER_EMISSION_UNIT = 100;
 export const LED_ROOT_METADATA_KEY = 'rayzeeLED';
 export const LED_DISPLAY_METADATA_KEY = 'rayzeeLEDDisplay';
+const LED_REAR_SURFACE_ROLE = 'black-rear-surface';
 
 const VIDEO_EVENTS = [
 	'loadedmetadata', 'loadeddata', 'canplay', 'play', 'pause', 'timeupdate',
 	'seeking', 'seeked', 'ended', 'error',
 ];
+
+// Updating accumulation for every decoded frame is prohibitively expensive at 30/60 fps.
+// This is intentionally a preview cadence while the live path-tracing mode is experimental.
+const LIVE_PATH_TRACER_FPS = 12;
+const LIVE_PATH_TRACER_FRAME_INTERVAL = 1000 / LIVE_PATH_TRACER_FPS;
+const VIDEO_FRAME_WATCHDOG_INTERVAL = 1000 / 30;
+const VIDEO_FRAME_CALLBACK_STALL_THRESHOLD = 150;
+// Matches the editor's default material-texture ceiling while avoiding a 4K/6K
+// 2D canvas upload on every decoded video frame.
+const MAX_LED_COMPOSITE_DIMENSION = 2048;
 
 const clamp = ( value, min, max ) => Math.min( max, Math.max( min, Number( value ) || 0 ) );
 
@@ -113,6 +124,34 @@ export function findLEDDisplayMesh( root ) {
 
 }
 
+/** Bake an LED model's authored UV island into normalized display coordinates. */
+export function normalizeLEDDisplayUVs( mesh, definition ) {
+
+	const attributeName = definition.uvChannel === 0 ? 'uv' : `uv${definition.uvChannel}`;
+	const sourceUVs = mesh.geometry?.getAttribute?.( attributeName );
+	if ( ! sourceUVs ) return false;
+
+	// Keep the catalog asset immutable in case its BufferGeometry is shared by a loader cache.
+	mesh.geometry = mesh.geometry.clone();
+	const uvs = mesh.geometry.getAttribute( attributeName );
+	const bounds = definition.uvBounds;
+	const du = Math.max( 1e-8, bounds.maxU - bounds.minU );
+	const dv = Math.max( 1e-8, bounds.maxV - bounds.minV );
+	for ( let index = 0; index < uvs.count; index ++ ) {
+
+		const sourceU = uvs.getX( index );
+		const normalizedU = definition.flipU
+			? ( bounds.maxU - sourceU ) / du
+			: ( sourceU - bounds.minU ) / du;
+		uvs.setXY( index, normalizedU, ( uvs.getY( index ) - bounds.minV ) / dv );
+
+	}
+
+	uvs.needsUpdate = true;
+	return true;
+
+}
+
 /**
  * Apply versioned, JSON-safe LED authoring data before the engine processes the asset.
  * Transient DOM/media/texture resources never enter userData.
@@ -134,6 +173,7 @@ export function prepareLEDAssetRoot( root, catalogItem ) {
 	}
 
 	if ( ! sourceNode?.isMesh ) throw new Error( `LED display mesh "${definition.sourceNodeName}" was not found.` );
+	const normalizedDisplayUVs = normalizeLEDDisplayUVs( sourceNode, definition );
 
 	// The supplied GLBs were exported from a larger Unreal stage. Keep their geometry,
 	// scale, and orientation, but put the authored base-centre pivot at the insertion origin.
@@ -148,11 +188,37 @@ export function prepareLEDAssetRoot( root, catalogItem ) {
 		emissiveIntensity: 0,
 		metalness: 0,
 		roughness: 0.72,
-		side: THREE.DoubleSide,
+		side: THREE.FrontSide,
 	} );
 	displayMaterial.toneMapped = true;
 	sourceNode.material = displayMaterial;
 	oldMaterials.forEach( material => material?.dispose?.() );
+
+	// Keep video and emission on the authored front face only. A coincident
+	// back-facing surface makes the other side opaque black in both raster and
+	// path tracing; side culling ensures the two surfaces never fight for a pixel.
+	const previousRearSurface = sourceNode.children.find( child => child.userData?.[ LED_DISPLAY_METADATA_KEY ]?.role === LED_REAR_SURFACE_ROLE );
+	if ( previousRearSurface ) {
+
+		sourceNode.remove( previousRearSurface );
+		previousRearSurface.material?.dispose?.();
+
+	}
+
+	const rearMaterial = new THREE.MeshBasicMaterial( {
+		name: 'LED Black Rear Surface',
+		color: 0x000000,
+		side: THREE.BackSide,
+	} );
+	rearMaterial.toneMapped = false;
+	const rearSurface = new THREE.Mesh( sourceNode.geometry, rearMaterial );
+	rearSurface.name = `${definition.displayMeshName}_Back`;
+	rearSurface.userData[ LED_DISPLAY_METADATA_KEY ] = {
+		version: definition.version,
+		identifier: rearSurface.name,
+		role: LED_REAR_SURFACE_ROLE,
+	};
+	sourceNode.add( rearSurface );
 
 	sourceNode.name = definition.displayMeshName;
 	sourceNode.userData[ LED_DISPLAY_METADATA_KEY ] = {
@@ -176,8 +242,10 @@ export function prepareLEDAssetRoot( root, catalogItem ) {
 		maxBrightnessNits: definition.maxBrightnessNits,
 		currentBrightnessNits: definition.defaultBrightnessNits,
 		uvChannel: definition.uvChannel,
-		uvBounds: { ...definition.uvBounds },
-		flipU: !! definition.flipU,
+		uvBounds: normalizedDisplayUVs
+			? { minU: 0, maxU: 1, minV: 0, maxV: 1 }
+			: { ...definition.uvBounds },
+		flipU: normalizedDisplayUVs ? false : !! definition.flipU,
 		videoPlacementTransform: {
 			position: { x: 0.5, y: 0.5 },
 			scale: { x: 1, y: 1 },
@@ -186,6 +254,7 @@ export function prepareLEDAssetRoot( root, catalogItem ) {
 			fitMode: 'stretch',
 		},
 		loop: true,
+		videoSource: null,
 	};
 
 	root.updateMatrixWorld( true );
@@ -211,6 +280,25 @@ export function fitLEDPlacement( fitMode, videoWidth, videoHeight, canvasWidth, 
 	}
 
 	return relativeAspect >= 1 ? { x: relativeAspect, y: 1 } : { x: 1, y: 1 / relativeAspect };
+
+}
+
+/** Draw one video frame into its authored rectangle, leaving uncovered LED pixels black. */
+export function drawLEDVideoFrame( context, video, width, height, placement ) {
+
+	context.fillStyle = '#000000';
+	context.fillRect( 0, 0, width, height );
+	context.save();
+	context.translate( placement.position.x * width, placement.position.y * height );
+	context.rotate( THREE.MathUtils.degToRad( placement.rotationDegrees || 0 ) );
+	context.drawImage(
+		video,
+		- placement.scale.x * width / 2,
+		- placement.scale.y * height / 2,
+		placement.scale.x * width,
+		placement.scale.y * height,
+	);
+	context.restore();
 
 }
 
@@ -276,6 +364,7 @@ export class LEDVideoManagerImpl {
 		this.app = null;
 		this.appListeners = [];
 		this.preferredPathTracing = null;
+		this.experimentalLivePathTracing = false;
 		this.modeOperation = 0;
 		this.materialSyncPromise = Promise.resolve();
 		this.pendingStaticSync = false;
@@ -345,13 +434,14 @@ export class LEDVideoManagerImpl {
 			name: record.root.userData.__rayzeeName || record.root.name || metadata.assetType,
 			status: record.status,
 			error: record.error,
-			filename: record.file?.name || '',
+			filename: record.file?.name || metadata.videoSource?.name || '',
 			videoWidth: record.video?.videoWidth || 0,
 			videoHeight: record.video?.videoHeight || 0,
 			duration: Number.isFinite( record.video?.duration ) ? record.video.duration : 0,
 			currentTime: Number.isFinite( record.video?.currentTime ) ? record.video.currentTime : 0,
 			seeking: !! record.video?.seeking,
 			isPlaying: record.status === 'playing',
+			videoSource: metadata.videoSource || null,
 			metadata,
 		};
 
@@ -388,11 +478,19 @@ export class LEDVideoManagerImpl {
 			file: null,
 			objectUrl: null,
 			video: null,
+			videoCanvas: null,
 			videoTexture: null,
 			pausedCanvas: null,
 			pausedTexture: null,
+			reconnectCanvas: null,
+			reconnectTexture: null,
 			eventHandlers: [],
 			videoFrameCallbackHandle: null,
+			videoFrameWatchdogHandle: null,
+			lastVideoFrameCallbackAt: - Infinity,
+			livePathTracerCanvas: null,
+			lastLivePathTracerUpload: - Infinity,
+			livePathTracerErrorLogged: false,
 			generation: 0,
 			captureOperation: 0,
 			placementTimer: null,
@@ -405,7 +503,7 @@ export class LEDVideoManagerImpl {
 
 	}
 
-	async chooseVideo( rootOrId, file ) {
+	async chooseVideo( rootOrId, file, { sourceRef = null, initialTime = 0 } = {} ) {
 
 		const record = this.getRecord( rootOrId );
 		if ( ! record ) throw new Error( 'The selected object is not an LED wall.' );
@@ -413,6 +511,13 @@ export class LEDVideoManagerImpl {
 		this.releaseMedia( record, { clearDisplay: true } );
 		const generation = ++ record.generation;
 		record.file = file;
+		record.root.userData[ LED_ROOT_METADATA_KEY ].videoSource = sourceRef || {
+			assetId: globalThis.crypto?.randomUUID?.() || `video-${Date.now()}`,
+			name: file.name,
+			type: file.type || 'video/mp4',
+			size: file.size,
+			lastModified: file.lastModified || 0,
+		};
 		record.objectUrl = URL.createObjectURL( file );
 		record.error = '';
 		record.status = 'loading';
@@ -426,9 +531,6 @@ export class LEDVideoManagerImpl {
 		video.loop = !! record.root.userData[ LED_ROOT_METADATA_KEY ].loop;
 		record.video = video;
 
-		const texture = new THREE.VideoTexture( video );
-		this.configureTexture( record, texture );
-		record.videoTexture = texture;
 		this.bindVideoEvents( record, generation );
 
 		const canPlay = new Promise( ( resolve, reject ) => {
@@ -466,6 +568,27 @@ export class LEDVideoManagerImpl {
 
 			await canPlay;
 			if ( generation !== record.generation ) return;
+			if ( Number.isFinite( initialTime ) && initialTime > 0 && Number.isFinite( video.duration ) ) {
+
+				const target = clamp( initialTime, 0, video.duration );
+				if ( Math.abs( video.currentTime - target ) > 0.01 ) {
+
+					await new Promise( resolve => {
+
+						const timeout = setTimeout( resolve, 3000 );
+						video.addEventListener( 'seeked', () => {
+
+							clearTimeout( timeout ); resolve();
+
+						}, { once: true } );
+						video.currentTime = target;
+
+					} );
+
+				}
+
+			}
+
 			await this.capturePausedFrame( record, generation );
 
 		} catch ( error ) {
@@ -477,6 +600,19 @@ export class LEDVideoManagerImpl {
 			throw error;
 
 		}
+
+	}
+
+	setMissingVideo( rootOrId, sourceRef, message = 'Reconnect this video to restore it.' ) {
+
+		const record = this.getRecord( rootOrId );
+		if ( ! record ) return;
+		record.root.userData[ LED_ROOT_METADATA_KEY ].videoSource = sourceRef;
+		record.status = 'missing';
+		record.error = message;
+		this.applyReconnectPlaceholder( record );
+		this.emit( record );
+		this.scheduleStaticMaterialSync();
 
 	}
 
@@ -531,7 +667,7 @@ export class LEDVideoManagerImpl {
 
 	}
 
-	configureTexture( record, texture ) {
+	configureTexture( record, texture, { composited = false } = {} ) {
 
 		const metadata = record.root.userData[ LED_ROOT_METADATA_KEY ];
 		texture.colorSpace = THREE.SRGBColorSpace;
@@ -543,8 +679,125 @@ export class LEDVideoManagerImpl {
 		texture.wrapS = THREE.ClampToEdgeWrapping;
 		texture.wrapT = THREE.ClampToEdgeWrapping;
 		texture.matrixAutoUpdate = false;
-		texture.matrix.copy( createLEDTextureMatrix( metadata ) );
+		texture.matrix.copy( createLEDTextureMatrix( composited ? {
+			...metadata,
+			videoPlacementTransform: {
+				position: { x: 0.5, y: 0.5 },
+				scale: { x: 1, y: 1 },
+				rotationDegrees: 0,
+			},
+		} : metadata ) );
 		texture.needsUpdate = true;
+
+	}
+
+	getCompositeDimensions( record ) {
+
+		const metadata = record.root.userData[ LED_ROOT_METADATA_KEY ];
+		const aspect = metadata.nativeCanvas.width / metadata.nativeCanvas.height;
+		const sourceMax = Math.max( record.video?.videoWidth || 0, record.video?.videoHeight || 0, 1024 );
+		const longest = Math.min( MAX_LED_COMPOSITE_DIMENSION, sourceMax );
+		return aspect >= 1
+			? { width: Math.round( longest ), height: Math.max( 1, Math.round( longest / aspect ) ) }
+			: { width: Math.max( 1, Math.round( longest * aspect ) ), height: Math.round( longest ) };
+
+	}
+
+	composeVideoFrame( record, canvas ) {
+
+		if ( ! record.video?.videoWidth || ! record.video?.videoHeight ) return false;
+		const { width, height } = this.getCompositeDimensions( record );
+		if ( canvas.width !== width ) canvas.width = width;
+		if ( canvas.height !== height ) canvas.height = height;
+		const context = canvas.getContext( '2d', { alpha: false } );
+		if ( ! context ) return false;
+		drawLEDVideoFrame(
+			context,
+			record.video,
+			width,
+			height,
+			record.root.userData[ LED_ROOT_METADATA_KEY ].videoPlacementTransform,
+		);
+		return true;
+
+	}
+
+	updateRasterVideoFrame( record ) {
+
+		let canvas = record.videoCanvas;
+		if ( ! canvas ) canvas = document.createElement( 'canvas' );
+		if ( ! this.composeVideoFrame( record, canvas ) ) return false;
+		record.videoCanvas = canvas;
+		if ( ! record.videoTexture ) {
+
+			record.videoTexture = new THREE.CanvasTexture( canvas );
+			this.configureTexture( record, record.videoTexture, { composited: true } );
+
+		} else record.videoTexture.needsUpdate = true;
+		return true;
+
+	}
+
+	invalidateRenderedFrame() {
+
+		const app = this.app || getApp();
+		if ( ! app ) return;
+		// WebGPU's realtime material pipeline can retain the previously sampled canvas
+		// even after CanvasTexture.needsUpdate. reset() invalidates that rendered result;
+		// this is the same path that already made brightness edits reveal the latest frame.
+		if ( ! app.pathTracerEnabled && typeof app.reset === 'function' ) app.reset();
+		else app.wake?.();
+
+	}
+
+	applyReconnectPlaceholder( record ) {
+
+		const metadata = record.root.userData[ LED_ROOT_METADATA_KEY ];
+		const aspect = metadata.nativeCanvas.width / metadata.nativeCanvas.height;
+		const width = 1024;
+		const height = Math.max( 256, Math.round( width / aspect ) );
+		const canvas = document.createElement( 'canvas' );
+		canvas.width = width;
+		canvas.height = height;
+		const context = canvas.getContext( '2d', { alpha: false } );
+		context.fillStyle = '#24272b';
+		context.fillRect( 0, 0, width, height );
+		context.fillStyle = '#d9dde2';
+		context.textAlign = 'center';
+		context.textBaseline = 'middle';
+		context.font = `600 ${Math.max( 34, Math.round( height * 0.13 ) )}px sans-serif`;
+		context.fillText( 'Please reconnect file', width / 2, height / 2, width * 0.86 );
+
+		const texture = new THREE.CanvasTexture( canvas );
+		texture.colorSpace = THREE.SRGBColorSpace;
+		texture.flipY = false;
+		texture.channel = metadata.uvChannel;
+		texture.minFilter = THREE.LinearFilter;
+		texture.magFilter = THREE.LinearFilter;
+		texture.generateMipmaps = true;
+		texture.wrapS = THREE.ClampToEdgeWrapping;
+		texture.wrapT = THREE.ClampToEdgeWrapping;
+		texture.matrixAutoUpdate = false;
+		texture.matrix.copy( createLEDTextureMatrix( {
+			...metadata,
+			videoPlacementTransform: {
+				position: { x: 0.5, y: 0.5 },
+				scale: { x: 1, y: 1 },
+				rotationDegrees: 0,
+			},
+		} ) );
+		texture.needsUpdate = true;
+		record.reconnectTexture?.dispose();
+		record.reconnectCanvas = canvas;
+		record.reconnectTexture = texture;
+
+		const material = record.displayMesh.material;
+		material.map = null;
+		material.emissiveMap = texture;
+		material.emissive.set( 0xffffff );
+		material.emissiveIntensity = 0.45;
+		material.needsUpdate = true;
+		this.app?.wake?.();
 
 	}
 
@@ -565,9 +818,11 @@ export class LEDVideoManagerImpl {
 
 		record.status = 'playing';
 		record.error = '';
+		this.updateRasterVideoFrame( record );
 		this.applyDisplayTexture( record, record.videoTexture );
 		this.startVideoFrameNotifications( record );
 		this.reconcileRendererMode();
+		this.invalidateRenderedFrame();
 
 	}
 
@@ -582,18 +837,85 @@ export class LEDVideoManagerImpl {
 
 	startVideoFrameNotifications( record ) {
 
-		const tick = () => {
+		this.cancelVideoFrameNotifications( record );
+		const tick = now => {
 
 			if ( record.status !== 'playing' || ! record.video ) return;
-			record.videoTexture.needsUpdate = true;
-			this.app?.wake?.();
+			record.lastVideoFrameCallbackAt = now;
+			this.updateRasterVideoFrame( record );
+			this.updateLivePathTracerFrame( record, now );
+			this.invalidateRenderedFrame();
 			record.videoFrameCallbackHandle = record.video.requestVideoFrameCallback( tick );
 
 		};
 
 		if ( typeof record.video?.requestVideoFrameCallback === 'function' ) {
 
+			record.lastVideoFrameCallbackAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
 			record.videoFrameCallbackHandle = record.video.requestVideoFrameCallback( tick );
+
+		}
+
+		// Chromium can occasionally stop delivering decoded-frame callbacks to one
+		// of several detached video elements. Keep an independent per-wall watchdog
+		// so one stalled callback cannot freeze that wall while the others continue.
+		record.videoFrameWatchdogHandle = setInterval( () => {
+
+			if ( record.status !== 'playing' || ! record.video ) return;
+			const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+			const callbackUnavailable = typeof record.video.requestVideoFrameCallback !== 'function';
+			if ( ! callbackUnavailable && now - record.lastVideoFrameCallbackAt < VIDEO_FRAME_CALLBACK_STALL_THRESHOLD ) return;
+			this.updateRasterVideoFrame( record );
+			this.updateLivePathTracerFrame( record, now );
+			this.invalidateRenderedFrame();
+
+		}, VIDEO_FRAME_WATCHDOG_INTERVAL );
+
+	}
+
+	updateLivePathTracerFrame( record, now = performance.now() ) {
+
+		if ( ! this.experimentalLivePathTracing || ! this.preferredPathTracing ) return false;
+		if ( record.status !== 'playing' || ! record.video || ! record.pausedTexture ) return false;
+		if ( now - record.lastLivePathTracerUpload < LIVE_PATH_TRACER_FRAME_INTERVAL ) return false;
+
+		const app = this.app || getApp();
+		const info = app?.getMaterialTextureLayerInfo?.( record.pausedTexture, true );
+		if ( ! info ) return false;
+
+		try {
+
+			let canvas = record.livePathTracerCanvas;
+			if ( ! canvas ) canvas = document.createElement( 'canvas' );
+			if ( canvas.width !== info.width || canvas.height !== info.height ) {
+
+				canvas.width = info.width;
+				canvas.height = info.height;
+
+			}
+
+			const context = canvas.getContext( '2d', { alpha: false, willReadFrequently: true } );
+			if ( ! context ) return false;
+			context.drawImage( record.videoTexture?.image || record.video, 0, 0, info.width, info.height );
+			const pixels = context.getImageData( 0, 0, info.width, info.height ).data;
+			if ( ! app.updateMaterialTextureLayer?.( record.pausedTexture, pixels, true ) ) return false;
+
+			record.livePathTracerCanvas = canvas;
+			record.lastLivePathTracerUpload = now;
+			record.livePathTracerErrorLogged = false;
+			app.wake?.();
+			return true;
+
+		} catch ( error ) {
+
+			if ( ! record.livePathTracerErrorLogged ) {
+
+				console.warn( '[LEDVideoManager] Live path-tracer frame upload failed:', error );
+				record.livePathTracerErrorLogged = true;
+
+			}
+
+			return false;
 
 		}
 
@@ -608,6 +930,9 @@ export class LEDVideoManagerImpl {
 		}
 
 		record.videoFrameCallbackHandle = null;
+		if ( record.videoFrameWatchdogHandle !== null ) clearInterval( record.videoFrameWatchdogHandle );
+		record.videoFrameWatchdogHandle = null;
+		record.lastVideoFrameCallbackAt = - Infinity;
 
 	}
 
@@ -618,22 +943,14 @@ export class LEDVideoManagerImpl {
 		const operation = ++ record.captureOperation;
 		let canvas = record.pausedCanvas;
 		if ( ! canvas ) canvas = document.createElement( 'canvas' );
-		if ( canvas.width !== video.videoWidth || canvas.height !== video.videoHeight ) {
-
-			canvas.width = video.videoWidth;
-			canvas.height = video.videoHeight;
-
-		}
-
-		const context = canvas.getContext( '2d', { alpha: false } );
-		context.drawImage( video, 0, 0, canvas.width, canvas.height );
+		if ( ! this.composeVideoFrame( record, canvas ) ) return;
 		if ( generation !== record.generation || operation !== record.captureOperation ) return;
 
 		record.pausedCanvas = canvas;
 		if ( ! record.pausedTexture ) {
 
 			record.pausedTexture = new THREE.CanvasTexture( canvas );
-			this.configureTexture( record, record.pausedTexture );
+			this.configureTexture( record, record.pausedTexture, { composited: true } );
 
 		} else {
 
@@ -667,7 +984,7 @@ export class LEDVideoManagerImpl {
 		const operation = ++ this.modeOperation;
 		if ( this.activeVideoCount() > 0 ) {
 
-			app.pathTracerEnabled = false;
+			app.pathTracerEnabled = this.experimentalLivePathTracing && !! this.preferredPathTracing;
 			app.wake?.();
 			return;
 
@@ -743,9 +1060,10 @@ export class LEDVideoManagerImpl {
 		if ( index === undefined ) return;
 		const hasTexture = !! record.displayMesh.material.emissiveMap;
 		this.app?.setMaterialProperty?.( index, 'emissive', new THREE.Color( hasTexture ? 0xffffff : 0x000000 ) );
-		this.app?.setMaterialProperty?.( index, 'emissiveIntensity', hasTexture
-			? nitsToEmission( record.root.userData[ LED_ROOT_METADATA_KEY ].currentBrightnessNits )
-			: 0 );
+		const intensity = record.status === 'missing'
+			? 0.45
+			: hasTexture ? nitsToEmission( record.root.userData[ LED_ROOT_METADATA_KEY ].currentBrightnessNits ) : 0;
+		this.app?.setMaterialProperty?.( index, 'emissiveIntensity', intensity );
 
 	}
 
@@ -754,7 +1072,12 @@ export class LEDVideoManagerImpl {
 		this.preferredPathTracing = !! enabled;
 		const app = this.app || getApp();
 		if ( ! app ) return;
-		if ( this.activeVideoCount() > 0 || this.pendingStaticSync ) {
+		if ( this.activeVideoCount() > 0 ) {
+
+			app.pathTracerEnabled = this.experimentalLivePathTracing && !! enabled;
+			app.wake?.();
+
+		} else if ( this.pendingStaticSync ) {
 
 			app.pathTracerEnabled = false;
 			app.wake?.();
@@ -764,6 +1087,22 @@ export class LEDVideoManagerImpl {
 			app.pathTracerEnabled = !! enabled;
 
 		}
+
+	}
+
+	setExperimentalLivePathTracing( enabled ) {
+
+		this.experimentalLivePathTracing = !! enabled;
+		for ( const record of this.records.values() ) record.lastLivePathTracerUpload = - Infinity;
+		this.reconcileRendererMode();
+		if ( this.experimentalLivePathTracing && this.preferredPathTracing ) {
+
+			const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+			for ( const record of this.records.values() ) this.updateLivePathTracerFrame( record, now );
+
+		}
+
+		return this.experimentalLivePathTracing;
 
 	}
 
@@ -829,7 +1168,7 @@ export class LEDVideoManagerImpl {
 		if ( ! record ) return;
 		const metadata = record.root.userData[ LED_ROOT_METADATA_KEY ];
 		metadata.currentBrightnessNits = clamp( nits, 0, metadata.maxBrightnessNits );
-		if ( record.displayMesh.material.emissiveMap ) {
+		if ( record.displayMesh.material.emissiveMap && record.status !== 'missing' ) {
 
 			record.displayMesh.material.emissiveIntensity = nitsToEmission( metadata.currentBrightnessNits );
 			this.syncBrightnessToPathTracer( record );
@@ -854,17 +1193,16 @@ export class LEDVideoManagerImpl {
 		if ( patch.rotationDegrees !== undefined ) placement.rotationDegrees = Number( patch.rotationDegrees ) || 0;
 		if ( patch.aspectRatioLocked !== undefined ) placement.aspectRatioLocked = !! patch.aspectRatioLocked;
 		if ( patch.fitMode !== undefined ) placement.fitMode = patch.fitMode;
-		const matrix = createLEDTextureMatrix( metadata );
-		for ( const texture of [ record.videoTexture, record.pausedTexture ] ) {
+		if ( record.videoCanvas && this.composeVideoFrame( record, record.videoCanvas ) && record.videoTexture ) record.videoTexture.needsUpdate = true;
+		if ( record.pausedCanvas && this.composeVideoFrame( record, record.pausedCanvas ) && record.pausedTexture ) record.pausedTexture.needsUpdate = true;
+		if ( record.status === 'playing' ) {
 
-			if ( texture ) {
-
-				texture.matrix.copy( matrix );
-				texture.needsUpdate = true;
-
-			}
+			const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+			this.updateLivePathTracerFrame( record, now );
 
 		}
+
+		this.invalidateRenderedFrame();
 
 		clearTimeout( record.placementTimer );
 		if ( commit ) record.placementTimer = setTimeout( () => this.commitPlacement( record ), 160 );
@@ -875,9 +1213,7 @@ export class LEDVideoManagerImpl {
 	commitPlacement( record ) {
 
 		if ( this.activeVideoCount() > 0 || ! record.pausedTexture ) return;
-		const index = record.displayMesh.userData?.materialIndex;
-		if ( index === undefined ) return;
-		this.app?.setTextureTransform?.( index, 'emissiveMap', record.pausedTexture.matrix.elements );
+		this.scheduleStaticMaterialSync( record.generation );
 
 	}
 
@@ -908,6 +1244,7 @@ export class LEDVideoManagerImpl {
 		const record = this.getRecord( rootOrId );
 		if ( ! record ) return;
 		this.releaseMedia( record, { clearDisplay: true } );
+		record.root.userData[ LED_ROOT_METADATA_KEY ].videoSource = null;
 		this.emit( record );
 		this.reconcileRendererMode();
 		this.scheduleStaticMaterialSync();
@@ -932,13 +1269,20 @@ export class LEDVideoManagerImpl {
 
 		record.videoTexture?.dispose();
 		record.pausedTexture?.dispose();
+		record.reconnectTexture?.dispose();
 		if ( record.objectUrl ) URL.revokeObjectURL( record.objectUrl );
 		record.file = null;
 		record.objectUrl = null;
 		record.video = null;
+		record.videoCanvas = null;
 		record.videoTexture = null;
 		record.pausedCanvas = null;
 		record.pausedTexture = null;
+		record.livePathTracerCanvas = null;
+		record.lastLivePathTracerUpload = - Infinity;
+		record.livePathTracerErrorLogged = false;
+		record.reconnectCanvas = null;
+		record.reconnectTexture = null;
 		record.status = 'empty';
 		record.error = '';
 		if ( clearDisplay ) this.applyDisplayTexture( record, null );

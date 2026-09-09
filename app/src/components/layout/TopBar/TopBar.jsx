@@ -5,6 +5,9 @@ import MenuBar from './MenuBar';
 import ViewportTabs from './ViewportTabs';
 import ActionBar from './ActionBar';
 import { useImportUrl } from '@/hooks/use-import-url';
+import { useProjectStore } from '@/services/projects/projectStore';
+import ProjectManagerDialog from './ProjectManagerDialog';
+import { Button } from '@/components/ui/button';
 
 // Lazy load the ImportUrlModal since it's only used when opening import dialog
 const ImportUrlModal = lazy( () => import( './ImportUrlModal' ) );
@@ -27,6 +30,12 @@ const TopBar = () => {
 	const appMode = useStore( state => state.appMode );
 	const setAppMode = useStore( state => state.setAppMode );
 	const handleModeChange = usePathTracerStore( state => state.handleModeChange );
+	const project = useProjectStore( state => state.activeProject );
+	const projectStatus = useProjectStore( state => state.status );
+	const missingMedia = useProjectStore( state => state.missingMedia );
+	const warnings = useProjectStore( state => state.warnings );
+	const setManagerOpen = useProjectStore( state => state.setManagerOpen );
+	const statusLabel = projectStatus === 'saving' ? 'Saving…' : projectStatus === 'dirty' ? 'Unsaved' : projectStatus === 'error' ? 'Save failed' : projectStatus === 'scratch' ? 'Scratch · not saved' : missingMedia.length ? `${missingMedia.length} video${missingMedia.length === 1 ? '' : 's'} missing` : warnings.length ? `${warnings.length} asset warning${warnings.length === 1 ? '' : 's'}` : 'Saved';
 
 	// Ref for appMode to keep handleTabChange stable
 	const appModeRef = useRef( appMode );
@@ -77,6 +86,10 @@ const TopBar = () => {
 				<div className="flex items-center h-10 border-b">
 					{logo}
 					<MenuBar onOpenImportModal={openImportModal} />
+					<Button variant="ghost" size="sm" className="h-8 max-w-[260px] flex-col items-start gap-0 px-2" onClick={() => setManagerOpen( true )}>
+						<span className="max-w-[230px] truncate text-xs">{project?.name || 'Loading project…'}</span>
+						<span className={`text-[9px] font-normal ${projectStatus === 'error' || missingMedia.length ? 'text-amber-500' : 'text-muted-foreground'}`}>{statusLabel}</span>
+					</Button>
 
 					<div className="grow" />
 					<ViewportTabs currentMode={appMode} onModeChange={handleTabChange} />
@@ -99,6 +112,7 @@ const TopBar = () => {
 							isImporting={modalState.isImporting}
 						/>
 					</Suspense>
+					<ProjectManagerDialog />
 				</div>
 			) }
 		</AuthProvider>

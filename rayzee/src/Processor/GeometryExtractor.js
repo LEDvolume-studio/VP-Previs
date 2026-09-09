@@ -95,6 +95,13 @@ export class GeometryExtractor {
 
 		this.resetArrays();
 
+		// Geometry is packed in world space. Authoring code can change an asset root
+		// immediately before a rebuild (project hydration is one example), before a
+		// renderer frame has had a chance to propagate that transform to child meshes.
+		// Refresh the complete hierarchy once here so extraction never consumes stale
+		// matrixWorld values from those children.
+		object.updateMatrixWorld?.( true );
+
 		// Pre-count the exact triangle total so the buffer is allocated once.
 		// Doubling-with-copy rounded up to the next power of two (wasting ~1GB on
 		// an 8.5M-tri scene) and held old+new during the copy (~3GB transient),
@@ -483,7 +490,10 @@ export class GeometryExtractor {
 	getTextureMatrix( texture ) {
 
 		if ( ! texture ) return new Matrix3().elements;
-		texture.updateMatrix();
+		// Respect textures with an explicitly authored matrix. Calling updateMatrix()
+		// unconditionally resets those matrices from offset/repeat/rotation, which made
+		// paused LED composites lose their display UV normalization during a material rebuild.
+		if ( texture.matrixAutoUpdate ) texture.updateMatrix();
 		return texture.matrix.elements;
 
 	}

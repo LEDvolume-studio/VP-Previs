@@ -39,6 +39,7 @@ import { OverlayManager } from './managers/OverlayManager.js';
 import { AnimationManager } from './managers/AnimationManager.js';
 import { TransformManager } from './managers/TransformManager.js';
 import { TransformGizmoHelper } from './managers/helpers/TransformGizmoHelper.js';
+import { RealtimeRenderer } from './managers/RealtimeRenderer.js';
 
 // One app per canvas — auto-dispose a prior owner if the caller double-
 // instantiates (StrictMode, HMR, etc.) so its rAF loop can't burn CPU.
@@ -57,6 +58,7 @@ const _appsByCanvas = new WeakMap();
  * - `app.interactionManager` — {@link InteractionManager} (selection, focus, context menu)
  * - `app.overlayManager`     — {@link OverlayManager} (HUD, helpers)
  * - `app.environmentManager` — EnvironmentManager (HDRI, procedural sky, mode switching)
+ * - `app.realtimeRenderer`   — {@link RealtimeRenderer} (raster lights, shadows, SSR/AO/bloom)
  * - `app.settings`           — {@link RenderSettings} (all render parameters)
  * - `app.stages`             — Named pipeline stages for advanced control
  * - `app.sceneMeshes`        — meshes backing the BVH, in buffer order (see {@link refitBVH})
@@ -213,6 +215,8 @@ export class PathTracerApp extends EventDispatcher {
 		this.animationManager = new AnimationManager();
 		/** @type {import('./managers/EnvironmentManager.js').EnvironmentManager} */
 		this.environmentManager = null;
+		/** @type {RealtimeRenderer} */
+		this.realtimeRenderer = null;
 
 		// ── State ──
 		this.isInitialized = false;
@@ -368,7 +372,7 @@ export class PathTracerApp extends EventDispatcher {
 		// Raster fallback when path tracer is disabled
 		if ( ! this.pathTracerEnabled ) {
 
-			this.renderer.render( this.meshScene, this.cameraManager.camera );
+			this.realtimeRenderer?.render();
 			this._renderHelperOverlay();
 			return;
 
@@ -528,6 +532,9 @@ export class PathTracerApp extends EventDispatcher {
 
 		}
 
+		this.realtimeRenderer?.syncEnvironment();
+		this.realtimeRenderer?.invalidate();
+
 		this._abortPostProcess();
 
 		this.completion.reset();
@@ -561,6 +568,7 @@ export class PathTracerApp extends EventDispatcher {
 		this.animationManager?.dispose();
 		this.transformManager?.dispose();
 		this.overlayManager?.dispose();
+		this.realtimeRenderer?.dispose();
 		this.lightManager?.dispose();
 		this.goboManager?.dispose();
 		this.iesManager?.dispose();
@@ -685,6 +693,7 @@ export class PathTracerApp extends EventDispatcher {
 		this.interactionManager?.deselect();
 		this.transformManager?.detach?.();
 
+		this._clearAppendedModels();
 		this.assetLoader?.releaseTargetModel();
 
 		// Clear lights in the WebGPU light scene
@@ -1172,6 +1181,7 @@ export class PathTracerApp extends EventDispatcher {
 		timer.start( 'Apply settings' );
 		this.settings.applyAll();
 		this.stages.compositor.setTransparentBackground( this.settings.get( 'transparentBackground' ) );
+		this.realtimeRenderer?.syncScene();
 		timer.end( 'Apply settings' );
 
 		timer.print( this._sceneSummaryParts() );
@@ -1275,6 +1285,38 @@ export class PathTracerApp extends EventDispatcher {
 			if ( name ) root.userData.__rayzeeName = name;
 			await this._finishRebuildNoReframe( { type: 'ModelAdded', url, id: root.uuid } );
 			return root.uuid;
+
+		} finally {
+
+			this._preserveSelectionOnRebuild = false;
+			this._loadingInProgress = false;
+
+		}
+
+	}
+
+	/** Append several models while performing at most one scene rebuild. */
+	async addModels( entries, { deferRebuild = false } = {} ) {
+
+		if ( this._loadingInProgress ) throw new Error( 'PathTracerApp.addModels: another load is already in progress' );
+		this._loadingInProgress = true;
+		this._preserveSelectionOnRebuild = true;
+		const added = [];
+		try {
+
+			for ( const entry of entries ) {
+
+				const { root } = await this.assetLoader.appendModel( entry.url );
+				entry.prepareRoot?.( root );
+				root.userData.__rayzeeSceneObject = true;
+				if ( entry.name ) root.userData.__rayzeeName = entry.name;
+				added.push( root.uuid );
+
+			}
+
+			if ( added.length && ! deferRebuild ) await this._finishRebuildNoReframe();
+			for ( const id of added ) this.dispatchEvent( { type: 'ModelAdded', id } );
+			return added;
 
 		} finally {
 
@@ -1700,6 +1742,7 @@ export class PathTracerApp extends EventDispatcher {
 
 		this.renderer.setPixelRatio( 1.0 );
 		this.renderer.setSize( width, height, false );
+		this.realtimeRenderer?.setPathTracerSize( width, height );
 		this.cameraManager.camera.aspect = width / height;
 		this.cameraManager.camera.updateProjectionMatrix();
 
@@ -1744,6 +1787,7 @@ export class PathTracerApp extends EventDispatcher {
 
 		this.renderer.setPixelRatio( 1.0 );
 		this.renderer.setSize( width, height, false );
+		this.realtimeRenderer?.setPathTracerSize( width, height );
 		this.cameraManager.camera.aspect = width / height;
 		this.cameraManager.camera.updateProjectionMatrix();
 
@@ -2404,7 +2448,19 @@ export class PathTracerApp extends EventDispatcher {
 	set pathTracerEnabled( value ) {
 
 		this._pathTracerEnabled = value;
-		if ( ! value ) this.precompileRaster();
+		if ( value ) {
+
+			this.realtimeRenderer?.deactivate();
+
+		} else {
+
+			this.realtimeRenderer?.activate();
+			this.realtimeRenderer?.syncScene();
+			this.precompileRaster();
+
+		}
+
+		this.wake();
 
 	}
 
@@ -2417,8 +2473,8 @@ export class PathTracerApp extends EventDispatcher {
 
 		if ( ! this.renderer || ! this.meshScene ) return Promise.resolve();
 
-		this._rasterPrecompile ??= this.renderer
-			.compileAsync( this.meshScene, this.cameraManager.camera )
+		this._rasterPrecompile ??= ( this.realtimeRenderer?.precompile()
+			|| this.renderer.compileAsync( this.meshScene, this.cameraManager.camera ) )
 			.catch( err => log.warn( 'raster fallback precompile failed', err ) );
 
 		return this._rasterPrecompile;
@@ -2718,6 +2774,33 @@ export class PathTracerApp extends EventDispatcher {
 	}
 
 	/**
+	 * Return the packed array-layer dimensions for an already uploaded material texture.
+	 * @param {import('three').Texture} texture
+	 * @param {boolean} isSrgb
+	 * @returns {{width:number,height:number,bucket:number,layer:number}|null}
+	 */
+	getMaterialTextureLayerInfo( texture, isSrgb = true ) {
+
+		return this.stages.pathTracer?.materialData.getTextureLayerInfo( texture, isSrgb ) ?? null;
+
+	}
+
+	/**
+	 * Update one existing material texture layer from tightly packed RGBA8 pixels.
+	 * @param {import('three').Texture} texture
+	 * @param {ArrayBufferView} pixels
+	 * @param {boolean} isSrgb
+	 * @returns {boolean}
+	 */
+	updateMaterialTextureLayer( texture, pixels, isSrgb = true ) {
+
+		const updated = this.stages.pathTracer?.materialData.updateTextureLayer( texture, pixels, isSrgb ) ?? false;
+		if ( updated ) this.reset();
+		return updated;
+
+	}
+
+	/**
 	 * Full material rebuild (required after texture changes).
 	 * @param {import('three').Scene} [scene]
 	 */
@@ -2893,6 +2976,14 @@ export class PathTracerApp extends EventDispatcher {
 		this.cameraManager.setInteractionManager( this.interactionManager );
 		this.lightManager = new LightManager( this.scene, this._sceneHelpers, this.stages.pathTracer, {
 			onReset: () => this.reset(),
+			onChange: () => this.realtimeRenderer?.syncLights(),
+		} );
+		this.realtimeRenderer = new RealtimeRenderer( {
+			renderer: this.renderer,
+			scene: this.meshScene,
+			lightScene: this.scene,
+			camera: this.cameraManager.camera,
+			settings: this.settings,
 		} );
 		this.goboManager = new GoboManager( this.stages.pathTracer, {
 			onReset: () => this.reset(),

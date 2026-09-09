@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { projectSession } from '@/services/projects/ProjectSession';
+import { useToast } from '@/hooks/use-toast';
 
 const formatTime = seconds => {
 
@@ -231,9 +233,10 @@ const PlacementEditor = ( { snapshot } ) => {
 const LEDTab = () => {
 
 	const selectedObject = useStore( state => state.selectedObject );
+	const { toast } = useToast();
 	const [ , setRevision ] = useState( 0 );
 	const [ choosing, setChoosing ] = useState( false );
-	const fileInputRef = useRef( null );
+	const [ experimentalLivePathTracing, setExperimentalLivePathTracing ] = useState( () => LEDVideoManager.experimentalLivePathTracing );
 	const ledRoot = useMemo( () => resolveLEDAssetRoot( selectedObject ), [ selectedObject ] );
 
 	useEffect( () => LEDVideoManager.subscribe( () => setRevision( value => value + 1 ) ), [] );
@@ -246,19 +249,18 @@ const LEDTab = () => {
 
 	const snapshot = LEDVideoManager.getSnapshot( ledRoot );
 
-	const chooseFile = useCallback( async event => {
+	const chooseFile = useCallback( async () => {
 
-		const file = event.target.files?.[ 0 ];
-		event.target.value = '';
-		if ( ! file || ! ledRoot ) return;
+		if ( ! ledRoot ) return;
 		setChoosing( true );
 		try {
 
-			await LEDVideoManager.chooseVideo( ledRoot, file );
+			if ( snapshot?.status === 'missing' ) await projectSession.reconnectLEDVideo( ledRoot );
+			else await projectSession.chooseLEDVideo( ledRoot );
 
-		} catch {
+		} catch ( error ) {
 
-			// The manager exposes the actionable decode/container error in its snapshot.
+			if ( error?.name !== 'AbortError' ) toast( { title: 'Video could not be linked', description: error.message, variant: 'destructive' } );
 
 		} finally {
 
@@ -266,7 +268,7 @@ const LEDTab = () => {
 
 		}
 
-	}, [ ledRoot ] );
+	}, [ ledRoot, snapshot?.status, toast ] );
 
 	if ( ! snapshot ) {
 
@@ -290,12 +292,11 @@ const LEDTab = () => {
 			</header>
 
 			<section className="space-y-3">
-				<input ref={fileInputRef} type="file" accept=".mp4,video/mp4" className="hidden" onChange={chooseFile} />
 				<div className="grid grid-cols-2 gap-2">
-					<Button size="sm" disabled={choosing} onClick={() => fileInputRef.current?.click()}>
-						<Upload size={13} className="mr-1" />{snapshot.filename ? 'Replace video' : 'Choose video'}
+					<Button size="sm" disabled={choosing} onClick={chooseFile}>
+						<Upload size={13} className="mr-1" />{snapshot.status === 'missing' ? 'Reconnect video' : snapshot.filename ? 'Replace video' : 'Choose video'}
 					</Button>
-					<Button size="sm" variant="outline" disabled={! snapshot.filename} onClick={() => LEDVideoManager.clearVideo( snapshot.rootId )}>
+					<Button size="sm" variant="outline" disabled={! snapshot.filename} onClick={() => projectSession.clearLEDVideo( ledRoot )}>
 						<Trash2 size={13} className="mr-1" />Clear
 					</Button>
 				</div>
@@ -337,6 +338,22 @@ const LEDTab = () => {
 				</div>
 				<div className="flex items-center justify-between">
 					<Switch label="Loop" checked={metadata.loop} onCheckedChange={loop => LEDVideoManager.setLoop( snapshot.rootId, loop )} />
+				</div>
+				<div className="space-y-1 rounded-md border border-amber-500/40 bg-amber-500/5 p-2">
+					<div className="flex items-center justify-between">
+						<Switch
+							label="Experimental live path tracer"
+							checked={experimentalLivePathTracing}
+							onCheckedChange={enabled => {
+
+								setExperimentalLivePathTracing( LEDVideoManager.setExperimentalLivePathTracing( enabled ) );
+
+							}}
+						/>
+					</div>
+					<p className="text-[10px] leading-relaxed text-muted-foreground">
+						Keeps Path Tracer active during playback and uploads video frames at a preview cadence. This continuously resets accumulation and may reduce performance. Off uses the raster renderer while video plays.
+					</p>
 				</div>
 			</section>
 

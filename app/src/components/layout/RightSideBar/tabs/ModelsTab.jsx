@@ -42,17 +42,17 @@ const ModelsTab = () => {
 	return (
 		<div className="flex flex-col h-full">
 			<Tabs
-				value={modelsSource}
+				value={import.meta.env.DEV ? modelsSource : 'featured'}
 				onValueChange={setModelsSource}
 				className="flex flex-col h-full"
 			>
-				<TabsList className="grid w-full grid-cols-2 h-auto p-0 border">
+				<TabsList className={`grid w-full ${import.meta.env.DEV ? 'grid-cols-2' : 'grid-cols-1'} h-auto p-0 border`}>
 					<TabsTrigger value="featured" className="text-xs rounded-full">
 						Featured
 					</TabsTrigger>
-					<TabsTrigger value="sketchfab" className="text-xs rounded-full">
+					{import.meta.env.DEV && <TabsTrigger value="sketchfab" className="text-xs rounded-full">
 						Sketchfab
-					</TabsTrigger>
+					</TabsTrigger>}
 				</TabsList>
 
 				<TabsContent value="featured" className="flex-1 min-h-0 mt-2">
@@ -64,12 +64,12 @@ const ModelsTab = () => {
 					/>
 				</TabsContent>
 
-				<TabsContent value="sketchfab" className="flex-1 min-h-0 mt-2">
+				{import.meta.env.DEV && <TabsContent value="sketchfab" className="flex-1 min-h-0 mt-2">
 					<SketchfabBrowser
 						onReplace={( url, name ) => loadModelUrl( url, name )}
 						onAdd={( url, name ) => addModel( url, name )}
 					/>
-				</TabsContent>
+				</TabsContent>}
 			</Tabs>
 		</div>
 	);

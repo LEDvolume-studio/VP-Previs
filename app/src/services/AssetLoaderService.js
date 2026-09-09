@@ -32,6 +32,16 @@ export class AssetLoaderService {
 		try {
 
 			await app.loadExampleModels( modelIndex, modelFiles );
+			const root = app.sceneModel;
+			if ( root ) {
+
+				root.userData.__rayzeeProjectInstanceId = globalThis.crypto?.randomUUID?.() || `instance-${Date.now()}`;
+				root.userData.__rayzeeCatalogId = modelFile.id;
+				root.userData.__rayzeeAssetVersion = modelFile.assetVersion || 1;
+				root.userData.__rayzeeAssetRole = 'primary';
+
+			}
+
 			return {
 				success: true,
 				modelName: modelFile.name,
@@ -82,7 +92,7 @@ export class AssetLoaderService {
 	 * @param {string} [name] - Display name for the scene-object list
 	 * @returns {Promise<{success:boolean, id:string, modelName:string}>}
 	 */
-	static async addModel( url, name ) {
+	static async addModel( url, name, catalogId = null, assetVersion = 1, instanceId = null ) {
 
 		const app = getApp();
 		if ( ! app ) {
@@ -94,6 +104,16 @@ export class AssetLoaderService {
 		try {
 
 			const id = await app.addModel( url, { name } );
+			const root = app.getSceneObject( id );
+			if ( root ) {
+
+				root.userData.__rayzeeProjectInstanceId = instanceId || globalThis.crypto?.randomUUID?.() || `instance-${Date.now()}`;
+				root.userData.__rayzeeCatalogId = catalogId;
+				root.userData.__rayzeeAssetVersion = assetVersion;
+				root.userData.__rayzeeAssetRole = 'appended';
+
+			}
+
 			return { success: true, id, modelName: name || 'Model' };
 
 		} catch ( error ) {
@@ -110,7 +130,7 @@ export class AssetLoaderService {
 	 * versioned LED metadata before the engine's scene/material rebuild.
 	 * @param {Object} catalogItem - Entry from LED_MODEL_FILES / MODEL_FILES.
 	 */
-	static async addLEDModel( catalogItem ) {
+	static async addLEDModel( catalogItem, instanceId = null ) {
 
 		const app = getApp();
 		if ( ! app ) throw new Error( 'PathTracer app not initialized' );
@@ -124,6 +144,16 @@ export class AssetLoaderService {
 				prepareRoot: root => prepareLEDAssetRoot( root, catalogItem ),
 			} );
 			LEDVideoManager.syncScene();
+			const root = app.getSceneObject( id );
+			if ( root ) {
+
+				root.userData.__rayzeeProjectInstanceId = instanceId || globalThis.crypto?.randomUUID?.() || `instance-${Date.now()}`;
+				root.userData.__rayzeeCatalogId = catalogItem.id;
+				root.userData.__rayzeeAssetVersion = catalogItem.assetVersion || 1;
+				root.userData.__rayzeeAssetRole = 'appended';
+
+			}
+
 			return { success: true, id, modelName: catalogItem.name };
 
 		} catch ( error ) {

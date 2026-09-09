@@ -212,6 +212,17 @@ describe( 'LightManager', () => {
 
 	describe( 'addLight', () => {
 
+		it( 'notifies secondary renderers after a light update', () => {
+
+			const onChange = vi.fn();
+			manager = new LightManager( scene, sceneHelpers, pathTracer, { onChange } );
+
+			manager.addLight( 'DirectionalLight' );
+
+			expect( onChange ).toHaveBeenCalledOnce();
+
+		} );
+
 		it( 'should return a descriptor for DirectionalLight', () => {
 
 			const result = manager.addLight( 'DirectionalLight' );

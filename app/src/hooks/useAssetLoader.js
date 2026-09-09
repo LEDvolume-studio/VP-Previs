@@ -83,9 +83,20 @@ export const useAssetLoader = () => {
 	), [ runModelLoad ] );
 
 	// Append a model by URL to the current scene (does NOT replace it).
-	const addModel = useCallback( ( url, name ) => runModelLoad(
+	const addModel = useCallback( ( url, name, catalogId, assetVersion ) => runModelLoad(
 		{ title: "Adding", status: "Adding Model..." },
-		() => AssetLoaderService.addModel( url, name ),
+		async () => {
+
+			if ( ! catalogId ) {
+
+				const { projectSession } = await import( '@/services/projects/ProjectSession' );
+				await projectSession.enterScratch();
+
+			}
+
+			return AssetLoaderService.addModel( url, name, catalogId, assetVersion );
+
+		},
 		{ successTitle: "Model Added", describe: r => r.modelName, errorTitle: "Error Adding Model" }
 	), [ runModelLoad ] );
 
@@ -98,7 +109,13 @@ export const useAssetLoader = () => {
 	// Replace the scene with a model loaded from a URL (e.g. a Sketchfab GLB).
 	const loadModelUrl = useCallback( ( url, name ) => runModelLoad(
 		{ title: "Loading", status: "Loading Model..." },
-		() => AssetLoaderService.loadModelUrl( url, name ),
+		async () => {
+
+			const { projectSession } = await import( '@/services/projects/ProjectSession' );
+			await projectSession.enterScratch();
+			return AssetLoaderService.loadModelUrl( url, name );
+
+		},
 		{ successTitle: "Model Loaded Successfully", describe: name || 'Model', errorTitle: "Error Loading Model" }
 	), [ runModelLoad ] );
 
@@ -107,7 +124,7 @@ export const useAssetLoader = () => {
 
 		const modelFile = MODEL_FILES[ parseInt( value ) ];
 		if ( ! modelFile ) return undefined;
-		return modelFile.led ? addLEDModel( modelFile ) : addModel( modelFile.url, modelFile.name );
+		return modelFile.led ? addLEDModel( modelFile ) : addModel( modelFile.url, modelFile.name, modelFile.id, modelFile.assetVersion );
 
 	}, [ addModel, addLEDModel ] );
 

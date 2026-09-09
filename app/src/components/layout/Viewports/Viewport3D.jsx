@@ -16,6 +16,8 @@ import { PathTracerApp } from 'rayzee';
 import { getApp, setApp } from '@/lib/appProxy';
 import { connectEngineToStore } from '@/lib/EngineAdapter';
 import { LEDVideoManager } from '@/services/LEDVideoManager';
+import { projectSession } from '@/services/projects/ProjectSession';
+import { useProjectStore } from '@/services/projects/projectStore';
 
 
 const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
@@ -48,6 +50,7 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 	const setLoading = useStore( state => state.setLoading );
 	const appMode = useStore( state => state.appMode );
 	const showAsvgfHeatmap = usePathTracerStore( state => state.showAsvgfHeatmap );
+	const savedViewport = useProjectStore( state => state.activeProject?.workspace?.viewport );
 
 	// Auto-fit scaling logic - only initialize after canvases are ready
 	const {
@@ -63,7 +66,9 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 		padding: 40,
 		minScale: 25,
 		maxScale: 200,
-		enabled: canvasReady // Only enable auto-fit after canvases are ready
+		enabled: canvasReady, // Only enable auto-fit after canvases are ready
+		persistedViewport: savedViewport,
+		onViewportChange: viewport => projectSession.setWorkspace( { viewport } ),
 	} );
 
 
@@ -219,43 +224,8 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 				// Bridge engine events → Zustand stores
 				engineCleanupRef.current = connectEngineToStore( app, { useStore, useCameraStore, usePathTracerStore, useAnimationStore, useLightStore } );
 
-				setLoading( { isLoading: true, title: "Starting", status: "Loading Assets...", progress: 60 } );
-
-				const { EnvironmentService } = await import( '@/services/EnvironmentService' );
-				const { DEFAULT_STATE } = await import( '@/Constants' );
-
-				// Model first, environment second. A model can carry its own environment in its
-				// metadata; loading the default first would fetch a ~1.6 MB HDRI, build its CDF,
-				// upload it, and then throw all of it away — and make the engine build a second
-				// CDF for the same texture during the scene rebuild. Nothing renders until
-				// app.animate() below, so the scene is never visible without an environment.
-				const urlParams = new URLSearchParams( window.location.search );
-				const modelUrl = urlParams.get( 'model' );
-				setLoading( { isLoading: true, title: "Starting", status: "Loading Model...", progress: 65 } );
-				if ( modelUrl ) {
-
-					await app.loadModel( modelUrl );
-
-				} else {
-
-					const { MODEL_FILES } = await import( '@/Constants' );
-					await app.loadExampleModels( DEFAULT_STATE.model, MODEL_FILES );
-
-				}
-
-				// Gate on what actually got installed, not on the metadata: an authored
-				// environment that failed to fetch must still fall back to the default.
-				if ( ! app.scene?.environment ) {
-
-					const defaultEnv = EnvironmentService.getEnvironmentById( DEFAULT_STATE.environment );
-					if ( defaultEnv?.url ) {
-
-						setLoading( { isLoading: true, title: "Starting", status: "Loading Environment...", progress: 90 } );
-						await app.loadEnvironment( defaultEnv.url );
-
-					}
-
-				}
+				setLoading( { isLoading: true, title: "Starting", status: "Restoring project...", progress: 60 } );
+				await projectSession.initialize();
 
 				setLoading( { isLoading: true, title: "Starting", status: "Setup Complete!", progress: 100 } );
 
