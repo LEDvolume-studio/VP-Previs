@@ -258,7 +258,9 @@ export class RealtimeRenderer {
 			roughnessNode: metalRoughNode.g,
 			reflectNonMetals: true,
 		} );
-		this.ssrPass.resolutionScale = 0.5;
+		// Keep reflections at the canvas' native backing resolution. Half-resolution
+		// SSR was visibly pixelated after upscaling, especially on broad glossy floors.
+		this.ssrPass.resolutionScale = 1;
 		this.ssrPass.quality.value = 0.35;
 		this.ssrPass.blurQuality = 1;
 		this.ssrPass.intensity.value = 0.65;

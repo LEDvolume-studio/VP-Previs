@@ -248,7 +248,7 @@ export class GeometryExtractor {
 
 		// Detect material type for appropriate property mapping
 		if ( material.isMeshPhysicalMaterial ) return 'physical';
-		if ( material.isMeshStandardMaterial ) return 'standard';
+		if ( material.isMeshStandardMaterial || material.isMeshStandardNodeMaterial ) return 'standard';
 		if ( material.isMeshPhongMaterial ) return 'phong';
 		if ( material.isMeshLambertMaterial ) return 'lambert';
 		if ( material.isMeshBasicMaterial ) return 'basic';

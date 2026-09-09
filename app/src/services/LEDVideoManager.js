@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { MeshStandardNodeMaterial } from 'three/webgpu';
+import { materialEmissive } from 'three/tsl';
 import { EngineEvents } from 'rayzee';
 import { getApp } from '@/lib/appProxy';
 
@@ -6,6 +8,7 @@ export const LED_NITS_PER_EMISSION_UNIT = 100;
 export const LED_ROOT_METADATA_KEY = 'rayzeeLED';
 export const LED_DISPLAY_METADATA_KEY = 'rayzeeLEDDisplay';
 const LED_REAR_SURFACE_ROLE = 'black-rear-surface';
+const DEFAULT_LED_PANEL_THICKNESS = 0.025;
 
 const VIDEO_EVENTS = [
 	'loadedmetadata', 'loadeddata', 'canplay', 'play', 'pause', 'timeupdate',
@@ -152,6 +155,72 @@ export function normalizeLEDDisplayUVs( mesh, definition ) {
 
 }
 
+/** Build a shallow closed shell that follows an LED display's exact curved outline. */
+export function createLEDRearShellGeometry( sourceGeometry, thickness = DEFAULT_LED_PANEL_THICKNESS ) {
+
+	const positions = sourceGeometry?.getAttribute?.( 'position' );
+	if ( ! positions ) return null;
+	if ( ! sourceGeometry.getAttribute( 'normal' ) ) sourceGeometry.computeVertexNormals();
+	const normals = sourceGeometry.getAttribute( 'normal' );
+	const indices = sourceGeometry.index?.array || Array.from( { length: positions.count }, ( _, index ) => index );
+	const depth = Math.max( 0.001, Number( thickness ) || DEFAULT_LED_PANEL_THICKNESS );
+	const front = index => new THREE.Vector3().fromBufferAttribute( positions, index );
+	const rear = index => front( index ).addScaledVector(
+		new THREE.Vector3().fromBufferAttribute( normals, index ).normalize(),
+		- depth,
+	);
+	// The imported LED geometry has duplicated vertices along UV seams. Identify
+	// physical edges by position so those seams do not become internal side walls.
+	const vertexKeys = Array.from( { length: positions.count }, ( _, index ) => [
+		positions.getX( index ),
+		positions.getY( index ),
+		positions.getZ( index ),
+	].map( value => Math.round( value * 100000 ) ).join( ',' ) );
+	const vertices = [];
+	const appendTriangle = ( a, b, c ) => vertices.push( ...a.toArray(), ...b.toArray(), ...c.toArray() );
+	const boundaryEdges = new Map();
+
+	for ( let offset = 0; offset + 2 < indices.length; offset += 3 ) {
+
+		const a = Number( indices[ offset ] );
+		const b = Number( indices[ offset + 1 ] );
+		const c = Number( indices[ offset + 2 ] );
+		// Reverse the rear winding so its geometric front points away from the screen.
+		appendTriangle( rear( c ), rear( b ), rear( a ) );
+		for ( const [ start, end ] of [[ a, b ], [ b, c ], [ c, a ]] ) {
+
+			const startKey = vertexKeys[ start ];
+			const endKey = vertexKeys[ end ];
+			const key = startKey < endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
+			const edge = boundaryEdges.get( key );
+			if ( edge ) edge.count ++;
+			else boundaryEdges.set( key, { start, end, count: 1 } );
+
+		}
+
+	}
+
+	for ( const { start, end, count } of boundaryEdges.values() ) {
+
+		if ( count !== 1 ) continue;
+		const frontStart = front( start );
+		const frontEnd = front( end );
+		const rearStart = rear( start );
+		const rearEnd = rear( end );
+		appendTriangle( frontStart, frontEnd, rearEnd );
+		appendTriangle( frontStart, rearEnd, rearStart );
+
+	}
+
+	const shell = new THREE.BufferGeometry();
+	shell.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+	shell.computeVertexNormals();
+	shell.computeBoundingBox();
+	shell.computeBoundingSphere();
+	return shell;
+
+}
+
 /**
  * Apply versioned, JSON-safe LED authoring data before the engine processes the asset.
  * Transient DOM/media/texture resources never enter userData.
@@ -181,7 +250,7 @@ export function prepareLEDAssetRoot( root, catalogItem ) {
 	sourceNode.updateMatrix();
 
 	const oldMaterials = Array.isArray( sourceNode.material ) ? sourceNode.material : [ sourceNode.material ];
-	const displayMaterial = new THREE.MeshStandardMaterial( {
+	const displayMaterial = new MeshStandardNodeMaterial( {
 		name: 'LED Display Surface',
 		color: 0x000000,
 		emissive: 0x000000,
@@ -190,17 +259,23 @@ export function prepareLEDAssetRoot( root, catalogItem ) {
 		roughness: 0.72,
 		side: THREE.FrontSide,
 	} );
+	// Explicit dynamic node: WebGPU's ordinary material observer snapshots only
+	// non-null properties on first render. A video linked after that snapshot is
+	// otherwise absent from its emissiveMap change tracking. Node materials with
+	// an explicit node bypass that static-property optimization on every draw.
+	displayMaterial.emissiveNode = materialEmissive;
 	displayMaterial.toneMapped = true;
 	sourceNode.material = displayMaterial;
 	oldMaterials.forEach( material => material?.dispose?.() );
 
-	// Keep video and emission on the authored front face only. A coincident
-	// back-facing surface makes the other side opaque black in both raster and
-	// path tracing; side culling ensures the two surfaces never fight for a pixel.
+	// Generate a shallow rear housing from the display itself. The physical offset
+	// avoids ambiguous coincident hits in the path tracer and the boundary skirt
+	// closes the silhouette when the curved wall is viewed from either side.
 	const previousRearSurface = sourceNode.children.find( child => child.userData?.[ LED_DISPLAY_METADATA_KEY ]?.role === LED_REAR_SURFACE_ROLE );
 	if ( previousRearSurface ) {
 
 		sourceNode.remove( previousRearSurface );
+		if ( previousRearSurface.geometry !== sourceNode.geometry ) previousRearSurface.geometry?.dispose?.();
 		previousRearSurface.material?.dispose?.();
 
 	}
@@ -208,10 +283,11 @@ export function prepareLEDAssetRoot( root, catalogItem ) {
 	const rearMaterial = new THREE.MeshBasicMaterial( {
 		name: 'LED Black Rear Surface',
 		color: 0x000000,
-		side: THREE.BackSide,
+		side: THREE.DoubleSide,
 	} );
 	rearMaterial.toneMapped = false;
-	const rearSurface = new THREE.Mesh( sourceNode.geometry, rearMaterial );
+	const rearGeometry = createLEDRearShellGeometry( sourceNode.geometry, definition.panelThickness );
+	const rearSurface = new THREE.Mesh( rearGeometry, rearMaterial );
 	rearSurface.name = `${definition.displayMeshName}_Back`;
 	rearSurface.userData[ LED_DISPLAY_METADATA_KEY ] = {
 		version: definition.version,
@@ -734,6 +810,11 @@ export class LEDVideoManagerImpl {
 			this.configureTexture( record, record.videoTexture, { composited: true } );
 
 		} else record.videoTexture.needsUpdate = true;
+		// One source identity for raster, paused frames and path-tracer layer lookup.
+		// Rebuilding materials during playback must not strand uploads on an old texture.
+		record.pausedCanvas = canvas;
+		record.pausedTexture = record.videoTexture;
+		if ( record.displayMesh.material.emissiveMap !== record.videoTexture ) this.applyDisplayTexture( record, record.videoTexture );
 		return true;
 
 	}
@@ -830,8 +911,8 @@ export class LEDVideoManagerImpl {
 
 		record.status = status;
 		this.cancelVideoFrameNotifications( record );
-		this.reconcileRendererMode();
 		await this.capturePausedFrame( record, record.generation );
+		this.reconcileRendererMode();
 
 	}
 
@@ -939,24 +1020,10 @@ export class LEDVideoManagerImpl {
 	async capturePausedFrame( record, generation = record.generation ) {
 
 		const video = record.video;
-		if ( ! video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || ! video.videoWidth || generation !== record.generation ) return;
+		if ( ! video || ! video.paused || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || ! video.videoWidth || generation !== record.generation ) return;
 		const operation = ++ record.captureOperation;
-		let canvas = record.pausedCanvas;
-		if ( ! canvas ) canvas = document.createElement( 'canvas' );
-		if ( ! this.composeVideoFrame( record, canvas ) ) return;
+		if ( ! this.updateRasterVideoFrame( record ) ) return;
 		if ( generation !== record.generation || operation !== record.captureOperation ) return;
-
-		record.pausedCanvas = canvas;
-		if ( ! record.pausedTexture ) {
-
-			record.pausedTexture = new THREE.CanvasTexture( canvas );
-			this.configureTexture( record, record.pausedTexture, { composited: true } );
-
-		} else {
-
-			record.pausedTexture.needsUpdate = true;
-
-		}
 
 		this.applyDisplayTexture( record, record.pausedTexture );
 		if ( record.status !== 'ended' ) record.status = 'paused';
@@ -1194,7 +1261,7 @@ export class LEDVideoManagerImpl {
 		if ( patch.aspectRatioLocked !== undefined ) placement.aspectRatioLocked = !! patch.aspectRatioLocked;
 		if ( patch.fitMode !== undefined ) placement.fitMode = patch.fitMode;
 		if ( record.videoCanvas && this.composeVideoFrame( record, record.videoCanvas ) && record.videoTexture ) record.videoTexture.needsUpdate = true;
-		if ( record.pausedCanvas && this.composeVideoFrame( record, record.pausedCanvas ) && record.pausedTexture ) record.pausedTexture.needsUpdate = true;
+		if ( record.pausedCanvas && record.pausedCanvas !== record.videoCanvas && this.composeVideoFrame( record, record.pausedCanvas ) && record.pausedTexture ) record.pausedTexture.needsUpdate = true;
 		if ( record.status === 'playing' ) {
 
 			const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -1268,7 +1335,7 @@ export class LEDVideoManagerImpl {
 		}
 
 		record.videoTexture?.dispose();
-		record.pausedTexture?.dispose();
+		if ( record.pausedTexture !== record.videoTexture ) record.pausedTexture?.dispose();
 		record.reconnectTexture?.dispose();
 		if ( record.objectUrl ) URL.revokeObjectURL( record.objectUrl );
 		record.file = null;

@@ -6,6 +6,9 @@ import { TRIANGLE_DATA_LAYOUT } from '@/core/EngineDefaults.js';
 let computeCanvasDimensions;
 let computeOutputDimensions;
 let ASPECT_RATIO_PRESETS;
+let DEFAULT_STATE;
+let MODEL_FILES;
+let WELCOME_PROJECT_CATALOG_ID;
 
 beforeAll( async () => {
 
@@ -14,6 +17,21 @@ beforeAll( async () => {
 	computeCanvasDimensions = mod.computeCanvasDimensions;
 	computeOutputDimensions = mod.computeOutputDimensions;
 	ASPECT_RATIO_PRESETS = mod.ASPECT_RATIO_PRESETS;
+	DEFAULT_STATE = mod.DEFAULT_STATE;
+	MODEL_FILES = mod.MODEL_FILES;
+	WELCOME_PROJECT_CATALOG_ID = mod.WELCOME_PROJECT_CATALOG_ID;
+
+} );
+
+describe( 'Welcome Project catalog identity', () => {
+
+	it( 'resolves Studio One by a stable ID rather than a shifted library index', () => {
+
+		const welcomeAsset = MODEL_FILES.find( item => item.id === WELCOME_PROJECT_CATALOG_ID );
+		expect( welcomeAsset?.name ).toBe( 'Studio One' );
+		expect( MODEL_FILES[ DEFAULT_STATE.model ]?.id ).toBe( WELCOME_PROJECT_CATALOG_ID );
+
+	} );
 
 } );
 

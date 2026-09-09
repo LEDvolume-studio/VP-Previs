@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BackSide, BufferAttribute, FrontSide, Group, Mesh, PlaneGeometry, MeshStandardMaterial, Vector2 } from 'three';
+import { Box3, BufferAttribute, BufferGeometry, DoubleSide, Float32BufferAttribute, FrontSide, Group, Mesh, PlaneGeometry, MeshStandardMaterial, Texture, Vector2 } from 'three';
+import NodeMaterialObserver from 'three/src/materials/nodes/manager/NodeMaterialObserver.js';
+import { GeometryExtractor } from '@/core/Processor/GeometryExtractor.js';
 import {
 	createLEDTextureMatrix,
+	createLEDRearShellGeometry,
 	drawLEDVideoFrame,
 	fitLEDPlacement,
 	LEDVideoManagerImpl,
@@ -31,6 +34,69 @@ const catalogItem = {
 };
 
 describe( 'LED asset metadata', () => {
+
+	it( 'builds a curved rear housing behind the display with a closed black rim', () => {
+
+		const display = new PlaneGeometry( 2, 1, 2, 1 );
+		const shell = createLEDRearShellGeometry( display, 0.025 );
+		const displayBounds = new Box3().setFromBufferAttribute( display.getAttribute( 'position' ) );
+		const shellBounds = new Box3().setFromBufferAttribute( shell.getAttribute( 'position' ) );
+
+		expect( shell ).not.toBe( display );
+		expect( shell.getAttribute( 'position' ).count ).toBeGreaterThan( display.index.count );
+		expect( shellBounds.min.z ).toBeCloseTo( displayBounds.min.z - 0.025 );
+		expect( shellBounds.max.z ).toBeCloseTo( displayBounds.max.z );
+
+	} );
+
+	it( 'does not treat duplicated UV-seam vertices as an outer boundary', () => {
+
+		const display = new BufferGeometry();
+		display.setAttribute( 'position', new Float32BufferAttribute( [
+			0, 0, 0, 1, 0, 0, 0, 1, 0,
+			1, 0, 0, 1, 1, 0, 0, 1, 0,
+		], 3 ) );
+		display.setAttribute( 'normal', new Float32BufferAttribute( [
+			0, 0, 1, 0, 0, 1, 0, 0, 1,
+			0, 0, 1, 0, 0, 1, 0, 0, 1,
+		], 3 ) );
+
+		const shell = createLEDRearShellGeometry( display, 0.025 );
+
+		// Two rear triangles (6 vertices) plus four perimeter quads (24 vertices).
+		expect( shell.getAttribute( 'position' ).count ).toBe( 30 );
+
+	} );
+
+	it( 'refreshes late-linked video even when the WebGPU observer cached the wall before it had a texture', () => {
+
+		const root = new Group();
+		const mesh = new Mesh( new PlaneGeometry(), new MeshStandardMaterial() );
+		mesh.name = 'SourceDisplay';
+		root.add( mesh );
+		prepareLEDAssetRoot( root, catalogItem );
+		const material = mesh.material;
+		const observer = new NodeMaterialObserver( { material, object: mesh, context: {} } );
+		// Reproduce the upstream omission: initially empty texture slots are never
+		// added to the observer's cached list, even after a texture is linked.
+		expect( observer.getMaterialData( material ).emissiveMap ).toBeUndefined();
+		material.emissiveMap = new Texture();
+		expect( observer.getMaterialData( material ).emissiveMap ).toBeUndefined();
+		const renderObject = { material, object: mesh };
+		for ( let renderId = 1; renderId <= 5; renderId ++ ) {
+
+			// Another object using the same shader has already rendered this frame.
+			observer.renderId = renderId;
+			material.emissiveMap.needsUpdate = true;
+			expect( observer.needsRefresh( renderObject, { renderId } ) ).toBe( true );
+
+		}
+
+		const extracted = new GeometryExtractor().extractMaterialsOnly( root );
+		expect( extracted.emissiveMaps ).toContain( material.emissiveMap );
+		expect( extracted.materials[ 0 ].emissiveIntensity ).toBe( material.emissiveIntensity );
+
+	} );
 
 	it( 'bakes a cropped and mirrored display UV island into normalized coordinates', () => {
 
@@ -66,9 +132,9 @@ describe( 'LED asset metadata', () => {
 		expect( mesh.material.side ).toBe( FrontSide );
 		const rearSurface = mesh.children.find( child => child.name === 'LED_Display_Test_Back' );
 		expect( rearSurface ).toBeDefined();
-		expect( rearSurface.geometry ).toBe( mesh.geometry );
+		expect( rearSurface.geometry ).not.toBe( mesh.geometry );
 		expect( rearSurface.material.isMeshBasicMaterial ).toBe( true );
-		expect( rearSurface.material.side ).toBe( BackSide );
+		expect( rearSurface.material.side ).toBe( DoubleSide );
 		expect( rearSurface.material.color.getHex() ).toBe( 0x000000 );
 		expect( rearSurface.material.map ).toBeNull();
 		expect( root.userData.rayzeeLED ).toMatchObject( {
@@ -152,6 +218,74 @@ describe( 'LED brightness conversion', () => {
 } );
 
 describe( 'LED renderer arbitration', () => {
+
+	it( 'retains each wall texture across repeated play, material rebuild, placement and pause cycles', async () => {
+
+		const contexts = [];
+		vi.stubGlobal( 'HTMLMediaElement', { HAVE_CURRENT_DATA: 2 } );
+		vi.stubGlobal( 'document', { createElement: () => {
+
+			const context = { fillRect: vi.fn(), save: vi.fn(), translate: vi.fn(), rotate: vi.fn(), drawImage: vi.fn(), restore: vi.fn() };
+			contexts.push( context );
+			return { width: 0, height: 0, getContext: () => context };
+
+		} } );
+		const manager = new LEDVideoManagerImpl();
+		manager.scheduleStaticMaterialSync = vi.fn();
+		manager.startVideoFrameNotifications = vi.fn();
+		const scene = new Group();
+		try {
+
+			const records = [ 0, 1 ].map( () => {
+
+				const root = new Group();
+				const mesh = new Mesh( new PlaneGeometry(), new MeshStandardMaterial() );
+				mesh.name = 'SourceDisplay';
+				root.add( mesh );
+				prepareLEDAssetRoot( root, catalogItem );
+				scene.add( root );
+				const record = manager.register( root );
+				record.video = { paused: true, readyState: 2, videoWidth: 1920, videoHeight: 1080, currentTime: 0 };
+				return record;
+
+			} );
+			for ( const record of records ) await manager.capturePausedFrame( record );
+			const textures = records.map( record => record.pausedTexture );
+			expect( textures[ 0 ] ).not.toBe( textures[ 1 ] );
+			for ( let cycle = 0; cycle < 3; cycle ++ ) {
+
+				for ( const [ index, record ] of records.entries() ) {
+
+					record.video.paused = false;
+					manager.onPlay( record );
+					const extracted = new GeometryExtractor().extractMaterialsOnly( scene );
+					expect( extracted.emissiveMaps ).toContain( textures[ index ] );
+					manager.setPlacement( record.root, { scale: { x: 0.4 }, position: { x: 0.2 + cycle * 0.1 } }, { commit: false } );
+					record.video.currentTime ++;
+					manager.updateRasterVideoFrame( record );
+					// A late load/seek capture must not override active playback.
+					await manager.capturePausedFrame( record );
+					expect( record.status ).toBe( 'playing' );
+					record.video.paused = true;
+					await manager.onStopped( record, 'paused' );
+					expect( record.displayMesh.material.emissiveMap ).toBe( textures[ index ] );
+					expect( record.pausedTexture ).toBe( record.videoTexture );
+					expect( record.pausedCanvas ).toBe( record.videoCanvas );
+
+				}
+
+			}
+
+			expect( contexts ).toHaveLength( 2 );
+			for ( const context of contexts ) expect( context.drawImage.mock.calls.length ).toBeGreaterThan( 3 );
+
+		} finally {
+
+			vi.unstubAllGlobals();
+
+		}
+
+	} );
 
 	it( 'keeps independently updating walls when one decoded-frame callback stalls', () => {
 

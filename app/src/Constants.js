@@ -23,6 +23,7 @@ export const ASSETS_BASE_URL = 'https://assets.rayzee.atulmourya.com';
 export const GLTF_SAMPLE_ASSETS_BASE = 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models';
 
 export const LED_METADATA_VERSION = 1;
+export const WELCOME_PROJECT_CATALOG_ID = 'model-studio-one';
 const LOCAL_MODELS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models`;
 const LED_ASSETS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models/led`;
 
@@ -31,7 +32,7 @@ const LED_ASSETS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models/led`;
 export const LED_MODEL_FILES = [
 	{
 		id: 'main-led-volume-wall-v1',
-		assetVersion: 3,
+		assetVersion: 4,
 		name: 'Main LED Volume Wall',
 		url: `${LED_ASSETS_BASE_URL}/main-led-volume-wall.glb`,
 		preview: `${LED_ASSETS_BASE_URL}/main-led-volume-wall.svg`,
@@ -49,12 +50,13 @@ export const LED_MODEL_FILES = [
 			uvChannel: 1,
 			uvBounds: { minU: - 0.000700951, maxU: 1, minV: 0.288818359, maxV: 0.7109375 },
 			flipU: true,
+			panelThickness: 0.025,
 			normalization: { translation: [ 0, 0, 0 ], preserveRotation: true },
 		},
 	},
 	{
 		id: 'square-wild-wall-v1',
-		assetVersion: 3,
+		assetVersion: 4,
 		name: 'Square Wild Wall',
 		url: `${LED_ASSETS_BASE_URL}/square-wild-wall.glb`,
 		preview: `${LED_ASSETS_BASE_URL}/square-wild-wall.svg`,
@@ -72,6 +74,7 @@ export const LED_MODEL_FILES = [
 			uvChannel: 1,
 			uvBounds: { minU: 0, maxU: 1, minV: 0, maxV: 1 },
 			flipU: false,
+			panelThickness: 0.025,
 			normalization: { translation: [ 0, 0, 0 ], preserveRotation: true },
 		},
 	},
@@ -81,7 +84,9 @@ export const LED_MODEL_FILES = [
 export const DEFAULT_STATE = {
 	...ENGINE_DEFAULTS,
 	// UI-only keys (not needed by the engine)
-	model: 9,
+	// Retained for UI compatibility. Project creation uses the stable catalog ID
+	// below rather than this array position, which can change as assets are added.
+	model: 0,
 	environment: 'aristea_wreck_puresky',
 	aspectRatioPreset: '1:1',
 	orientation: 'landscape',
@@ -98,6 +103,7 @@ const stableCatalogId = ( prefix, name ) => `${prefix}-${name.toLowerCase()
 // export const MODEL_BASE_URL = 'https://raw.githubusercontent.com/gkjohnson/3d-demo-data/main/models/';
 export const MODEL_FILES = [
 	{
+		id: WELCOME_PROJECT_CATALOG_ID,
 		name: 'Studio One',
 		url: `${LOCAL_MODELS_BASE_URL}/studio-one.glb`,
 		preview: `${LOCAL_MODELS_BASE_URL}/studio-one.svg`,

@@ -71,7 +71,7 @@ describe( 'RealtimeRenderer', () => {
 		expect( manager.pipeline ).not.toBeNull();
 		expect( manager.scenePass ).not.toBeNull();
 		expect( manager.aoPass.resolutionScale ).toBe( 0.75 );
-		expect( manager.ssrPass.resolutionScale ).toBe( 0.5 );
+		expect( manager.ssrPass.resolutionScale ).toBe( 1 );
 		expect( manager.bloomPass ).not.toBeNull();
 		expect( manager.aaPass ).not.toBeNull();
 

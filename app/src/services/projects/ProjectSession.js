@@ -1,4 +1,4 @@
-import { DEFAULT_STATE, MODEL_FILES } from '@/Constants';
+import { DEFAULT_STATE, MODEL_FILES, WELCOME_PROJECT_CATALOG_ID } from '@/Constants';
 import {
 	useAnimationStore,
 	useAssetsStore,
@@ -224,7 +224,8 @@ export class ProjectSession {
 		let projects = await this.repository.list();
 		if ( projects.length === 0 ) {
 
-			const catalog = MODEL_FILES[ DEFAULT_STATE.model ];
+			const catalog = MODEL_FILES.find( item => item.id === WELCOME_PROJECT_CATALOG_ID );
+			if ( ! catalog ) throw new Error( `Welcome Project asset “${WELCOME_PROJECT_CATALOG_ID}” is unavailable.` );
 			projects = [ await this.repository.create( { name: 'Welcome Project', primaryCatalogId: catalog?.id } ) ];
 
 		}
