@@ -64,7 +64,9 @@ export const useAutoFitScale = ( {
 		// Use the smaller scale to ensure it fits in both dimensions
 		const bestFitScale = Math.min( scaleX, scaleY, maxScale );
 
-		return Math.max( Math.ceil( bestFitScale ), minScale );
+		// Rounding up can overflow the available space by a full percentage of
+		// the source resolution. Keep both fitted dimensions within the bounds.
+		return Math.max( bestFitScale, minScale );
 
 	}, [ viewportRef, canvasWidth, canvasHeight, padding, minScale, maxScale, enabled ] );
 

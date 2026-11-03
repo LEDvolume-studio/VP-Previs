@@ -1,0 +1,59 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vp-previs-shared-development",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-07-30",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": false
+  },
+  "vars": {
+    "ENVIRONMENT": "local",
+    "ENABLE_DRAFT_API": "false",
+    "ENABLE_ACCOUNT_API": "true",
+    "ENABLE_ACCOUNT_WRITES": "true",
+    "ENABLE_CATALOGUE_API": "true",
+    "ALLOW_LOCAL_GEO_EXEMPTION": "true",
+    "ENABLE_HOSTED_ADMIN_AUTH": "false",
+    "MAX_JSON_BYTES": "2097152",
+    "MAX_NARRATION_BYTES": "16777216",
+    "MAX_LIBRARY_ASSET_BYTES": "134217728",
+    "MAX_DRAFT_REVISIONS": "10000",
+    "MAX_DRAFT_MEDIA": "100",
+    "MAX_DRAFT_CREATIONS_PER_MINUTE": "30",
+    "STUDENT_LOGIN_ORIGIN": "https://vp-previs.pages.dev"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vp-previs-student",
+      "database_id": "68cb01ea-7596-4d5e-b2e3-38fb88c59991",
+      "migrations_dir": "migrations",
+      "remote": true
+    },
+    {
+      "binding": "ADMIN_AUTH_DB",
+      "database_name": "vp-previs-student",
+      "database_id": "68cb01ea-7596-4d5e-b2e3-38fb88c59991",
+      "remote": true
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "LIBRARY",
+      "bucket_name": "vp-previs-library",
+      "remote": true
+    },
+    {
+      "binding": "DOCUMENTS",
+      "bucket_name": "vp-previs-library",
+      "remote": true
+    },
+    {
+      "binding": "NARRATION",
+      "bucket_name": "vp-previs-library",
+      "remote": true
+    }
+  ]
+}

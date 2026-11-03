@@ -1,4 +1,4 @@
-import { Fn, wgslFn, float, vec2, vec3, vec4, int, If, normalize, cross, dot, length, sign, abs, atan, mix, clamp, texture, textureSize } from 'three/tsl';
+import { Fn, wgslFn, float, vec2, vec3, vec4, int, If, normalize, cross, dot, length, sign, abs, atan, mix, clamp, texture, textureSize, uintBitsToFloat } from 'three/tsl';
 import { DataArrayTexture, LinearFilter } from 'three';
 
 import {
@@ -6,15 +6,16 @@ import {
 	MaterialSamples,
 	ExtMapResult,
 } from './Struct.js';
-import { getDatafromStorageBuffer } from './Common.js';
+import { getDatafromStorageBuffer, instanceRows, instanceDirToWorld, TRI_STRIDE } from './Common.js';
 import { TEXTURE_CONSTANTS } from '../EngineDefaults.js';
 
 // ================================================================================
-// CONSOLIDATED SIZE-BUCKETED MATERIAL TEXTURES
+// CONSOLIDATED SHAPE-BUCKETED MATERIAL TEXTURES
 // ================================================================================
 // Material maps are packed into two colorSpace pools (sRGB: albedo+emissive; linear:
 // normal/bump/roughness/metalness/displacement), each split into MATERIAL_BUCKET_COUNT
-// longest-edge size buckets so a small map no longer pays a large neighbour's footprint.
+// (width, height) buckets so a small or oddly-shaped map no longer pays a large neighbour's
+// footprint. Bucket shapes are planned per scene (planTextureBuckets) — not powers of two.
 // A map's stored index encodes (bucket, layer) as bucket * BUCKET_LAYER_STRIDE + layer.
 //
 // The bucket texture nodes live at module level (same pattern as gobo/IES/shadowAlbedo):
@@ -404,15 +405,22 @@ const uvTransformJacobian = /*@__PURE__*/ wgslFn( `
  * @param {Node} geometryNormal shading-space normal, for the handedness test
  * @param {Node} transform      the normal map's mat3 UV transform
  */
-export const triangleUVTangent = Fn( ( [ triangleBuffer, triIndex, geometryNormal, transform ] ) => {
+/**
+ * Tangent frame for a triangle, in world space.
+ *
+ * Positions are stored per instance in object space, so T and B come out in that space
+ * and are carried across before they meet the world-space geometric normal — otherwise
+ * the handedness test mixes two frames and normal maps light from the wrong side.
+ */
+export const triangleUVTangent = Fn( ( [ triangleBuffer, triIndex, geometryNormal, transform, bvhBuffer, instanceLeaf ] ) => {
 
-	const S = int( 8 );
-	const pA = getDatafromStorageBuffer( triangleBuffer, triIndex, int( 0 ), S ).xyz;
-	const e1 = getDatafromStorageBuffer( triangleBuffer, triIndex, int( 1 ), S ).xyz.sub( pA );
-	const e2 = getDatafromStorageBuffer( triangleBuffer, triIndex, int( 2 ), S ).xyz.sub( pA );
+	const S = int( TRI_STRIDE );
+	const pA = uintBitsToFloat( getDatafromStorageBuffer( triangleBuffer, triIndex, int( 0 ), S ).xyz );
+	const e1 = uintBitsToFloat( getDatafromStorageBuffer( triangleBuffer, triIndex, int( 1 ), S ).xyz ).sub( pA );
+	const e2 = uintBitsToFloat( getDatafromStorageBuffer( triangleBuffer, triIndex, int( 2 ), S ).xyz ).sub( pA );
 
-	const uvAB = getDatafromStorageBuffer( triangleBuffer, triIndex, int( 6 ), S );
-	const uvC = getDatafromStorageBuffer( triangleBuffer, triIndex, int( 7 ), S ).xy;
+	const uvAB = uintBitsToFloat( getDatafromStorageBuffer( triangleBuffer, triIndex, int( 3 ), S ) );
+	const uvC = uintBitsToFloat( getDatafromStorageBuffer( triangleBuffer, triIndex, int( 4 ), S ).xy );
 	const d1 = uvAB.zw.sub( uvAB.xy );
 	const d2 = uvC.sub( uvAB.xy );
 
@@ -432,6 +440,14 @@ export const triangleUVTangent = Fn( ( [ triangleBuffer, triIndex, geometryNorma
 		If( length( Tt ).greaterThan( 1e-12 ), () => {
 
 			T.assign( Tt );
+
+		} );
+
+		If( instanceLeaf.greaterThanEqual( int( 0 ) ), () => {
+
+			const rows = instanceRows( bvhBuffer, instanceLeaf );
+			T.assign( instanceDirToWorld( { r0: rows[ 0 ].xyz, r1: rows[ 1 ].xyz, r2: rows[ 2 ].xyz, v: T } ) );
+			B.assign( instanceDirToWorld( { r0: rows[ 0 ].xyz, r1: rows[ 1 ].xyz, r2: rows[ 2 ].xyz, v: B } ) );
 
 		} );
 

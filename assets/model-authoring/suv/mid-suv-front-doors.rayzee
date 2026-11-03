@@ -1,0 +1,1792 @@
+{
+  "format": "rayzee-project",
+  "schemaVersion": 1,
+  "projectId": "b85a9809-17d7-43f4-8d2b-0418ba1c67ff",
+  "name": "Mid SUV — Front Door Poses",
+  "createdAt": "2026-10-20T00:22:02.662Z",
+  "updatedAt": "2026-10-20T00:22:02.662Z",
+  "revision": 0,
+  "scene": {
+    "units": {
+      "length": "metre",
+      "metresPerUnit": 1
+    },
+    "assets": [
+      {
+        "instanceId": "7b7aea09-84ab-4309-966b-d4af3448e572",
+        "catalogId": "kb3d-mid-suv-v1",
+        "assetVersion": 1,
+        "role": "appended",
+        "name": "KB3D Mid SUV"
+      }
+    ],
+    "nodes": {
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0": {
+        "name": "Scene",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0": {
+        "name": "KB3D_Mid_SUV",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/0": {
+        "name": "FrontDoor_left_Hinge",
+        "position": [
+          -1.100000023841858,
+          1,
+          1.0149999856948853
+        ],
+        "quaternion": [
+          0,
+          0.5372996083468239,
+          0,
+          0.8433914458128857
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/0/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorL",
+        "position": [
+          0.05879795551300049,
+          0.17759263515472412,
+          -0.6819178462028503
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/0/0/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorL_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/0/0/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorL_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/0/0/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorL_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/0/0/3": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorL_4",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/0/0/4": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorL_5",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/0/0/5": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorL_6",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/1": {
+        "name": "FrontDoor_right_Hinge",
+        "position": [
+          1.100000023841858,
+          1,
+          1.0149999856948853
+        ],
+        "quaternion": [
+          0,
+          -0.5372996083468239,
+          0,
+          0.8433914458128857
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/1/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorR",
+        "position": [
+          -0.058797478675842285,
+          0.17759275436401367,
+          -0.6819178462028503
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/1/0/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorR_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/1/0/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorR_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/1/0/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorR_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/1/0/3": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorR_4",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/1/0/4": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorR_5",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/1/0/5": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorR_6",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body",
+        "position": [
+          -0.000011920928955078125,
+          1.213016152381897,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/3": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_4",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/4": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_5",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/5": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_6",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/6": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_7",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/7": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_8",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/8": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_9",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/9": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_10",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/10": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_11",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/11": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_12",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/2/12": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Body_13",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/3": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelL",
+        "position": [
+          -0.9693341255187988,
+          0.45344141125679016,
+          1.779822826385498
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/3/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelL_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/3/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelL_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/3/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelL_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/4": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelR",
+        "position": [
+          0.9693112373352051,
+          0.45344141125679016,
+          1.779822826385498
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/4/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelR_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/4/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelR_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/4/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelR_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/5": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Hatch",
+        "position": [
+          -0.000011920928955078125,
+          1.4059834480285645,
+          -2.3693134784698486
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/5/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Hatch_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/5/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Hatch_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/5/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Hatch_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/5/3": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Hatch_4",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/5/4": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Hatch_5",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/6": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorL",
+        "position": [
+          -0.9466328620910645,
+          1.1931655406951904,
+          -0.9374918937683105
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/6/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorL_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/6/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorL_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/6/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorL_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/6/3": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorL_4",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/6/4": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorL_5",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/6/5": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorL_6",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/7": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorR",
+        "position": [
+          0.9466090202331543,
+          1.1931655406951904,
+          -0.937491774559021
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/7/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorR_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/7/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorR_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/7/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorR_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/7/3": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorR_4",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/7/4": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorR_5",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/7/5": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearDoorR_6",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/8": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearWheelL",
+        "position": [
+          -0.9693341255187988,
+          0.45344167947769165,
+          -1.6934435367584229
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/8/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearWheelL_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/8/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearWheelL_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/8/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearWheelL_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/9": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearWheelR",
+        "position": [
+          0.9693112373352051,
+          0.45344167947769165,
+          -1.6934435367584229
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/9/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearWheelR_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/9/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearWheelR_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/9/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_RearWheelR_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/10": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Shifter",
+        "position": [
+          -0.007312297821044922,
+          0.8872753381729126,
+          0.556304931640625
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/10/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Shifter_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/10/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_Shifter_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/11": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SteeringWheel",
+        "position": [
+          0.5014243125915527,
+          1.2754658460617065,
+          0.558230996131897
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/11/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SteeringWheel_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/11/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SteeringWheel_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/12": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SuspensionFront",
+        "position": [
+          -0.000011444091796875,
+          0.5076597929000854,
+          1.7371089458465576
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/12/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SuspensionFront_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/12/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SuspensionFront_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/12/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SuspensionFront_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/13": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SuspensionRear",
+        "position": [
+          -0.000011444091796875,
+          0.5337566137313843,
+          -1.7142291069030762
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/13/0": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SuspensionRear_1",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/13/1": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SuspensionRear_2",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/13/2": {
+        "name": "KB3D_CEV_VehicMidSUV_A_SuspensionRear_3",
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/14": {
+        "name": "KB3D_CEV_VehicMidSUV_A_WiperA",
+        "position": [
+          -0.34677839279174805,
+          1.4011399745941162,
+          1.320109486579895
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/15": {
+        "name": "KB3D_CEV_VehicMidSUV_A_WiperB",
+        "position": [
+          0.3508419990539551,
+          1.3910787105560303,
+          1.3427040576934814
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "7b7aea09-84ab-4309-966b-d4af3448e572:0/0/16": {
+        "name": "KB3D_CEV_VehicMidSUV_A_WiperC",
+        "position": [
+          -0.33804941177368164,
+          1.5812349319458008,
+          -2.538177967071533
+        ],
+        "quaternion": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      }
+    },
+    "materials": {},
+    "lights": [],
+    "environment": {
+      "catalogId": "aristea_wreck_puresky"
+    }
+  },
+  "render": {
+    "ui": {
+      "enablePathTracer": false,
+      "pathTracerActive": false
+    }
+  },
+  "cameras": {
+    "activeIndex": 0,
+    "active": {
+      "name": "SUV camera",
+      "position": [
+        -8,
+        5,
+        9
+      ],
+      "quaternion": [
+        -0.1492475741365788,
+        -0.3508211493150764,
+        -0.05674382654896491,
+        0.9227295491942242
+      ],
+      "fov": 40,
+      "near": 0.01,
+      "far": 1000,
+      "orbitTarget": [
+        0,
+        1,
+        0
+      ]
+    },
+    "cameras": [],
+    "autoFocusMode": "manual"
+  },
+  "led": [],
+  "animation": {
+    "selectedClip": 0,
+    "speed": 1,
+    "loop": true,
+    "loopCount": 1
+  },
+  "workspace": {
+    "panelLayout": [
+      20,
+      60,
+      20
+    ],
+    "appMode": "preview",
+    "activeTab": "poses",
+    "viewport": {
+      "mode": "auto",
+      "scale": 100
+    },
+    "editorView": {
+      "mode": "perspective",
+      "style": "solid",
+      "gridVisible": true,
+      "views": {}
+    },
+    "selectedEntity": null
+  },
+  "extensions": {}
+}

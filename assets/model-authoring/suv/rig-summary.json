@@ -1,0 +1,29 @@
+{
+  "source": "/Users/mitcha/Downloads/asset/KB3D_Mid SUV.blend",
+  "relinkedImages": 87,
+  "textureMaxSize": 1024,
+  "windowPolygons": 1860,
+  "hinges": [
+    {
+      "name": "FrontDoor_left_Hinge",
+      "side": "left",
+      "blenderPivot": [
+        -1.100000023841858,
+        -1.0149999856948853,
+        1.0
+      ],
+      "openDegrees": 65
+    },
+    {
+      "name": "FrontDoor_right_Hinge",
+      "side": "right",
+      "blenderPivot": [
+        1.100000023841858,
+        -1.0149999856948853,
+        1.0
+      ],
+      "openDegrees": -65
+    }
+  ],
+  "glbBytes": 19432020
+}

@@ -30,6 +30,8 @@ A real-time WebGPU path tracing engine built on Three.js. Framework-agnostic —
   - [engine.denoisingManager](#enginedenoisingmanager)
   - [engine.interactionManager](#engineinteractionmanager)
   - [engine.transformManager](#enginetransformmanager)
+  - [Moving and Deforming Objects](#moving-and-deforming-objects)
+  - [Degradation contract](#degradation-contract)
   - [Output Methods](#output-methods)
   - [Render Resolution Reserve](#render-resolution-reserve)
   - [Memory Monitoring](#memory-monitoring)
@@ -285,6 +287,11 @@ configureAssets({
   oidnWeightsBaseUrl:    '/oidn-tzas/',
   upscalerModelBaseUrl:  '/upscaler-onnx/',
 
+  // DLSS. The runtime is a plain script the host must serve — it installs
+  // `globalThis.DLSSRuntime` as a side effect and cannot be imported.
+  dlssRuntimeUrl:    '/dlss/dlss-runtime.js',
+  dlssAssetBaseUrl:  '/dlss/',
+
   // Prefix for engine-managed IndexedDB stores. Set to a unique value if multiple
   // apps embed the engine on the same origin to avoid cache collisions.
   cacheNamespace: 'my-app',
@@ -309,6 +316,9 @@ const engine = new PathTracerApp(canvas, options?)
 | `canvas` | `HTMLCanvasElement` | Rendering target |
 | `options.autoResize` | `boolean` | Auto-resize on window resize (default: `true`) |
 | `options.container` | `HTMLElement` | Single DOM parent the engine mounts auxiliary elements into — HUD overlay (tile borders, helpers) and denoiser canvas. Defaults to `canvas.parentNode`. |
+| `options.strict` | `boolean` | Throw an `EngineIssueError` where the engine would otherwise degrade and carry on (default: `false`). See [Degradation contract](#degradation-contract). |
+| `options.profile` | `string` | `'viewer'` (default) or `'physical'` — product tuning that is not a physical constant: area-light scale, environment rotation, tone mapping, saturation. An unknown name throws. |
+| `options.maxSceneBytes` | `number` | Raise or lower the CPU memory ceiling a scene may need before the engine refuses it (default 9,216 MB). See [Memory monitoring](#memory-monitoring). |
 
 The engine creates and mounts everything it needs (denoiser canvas, tile/HUD overlay) into a single parent on `init()`. Performance HUDs (e.g. `stats-gl`) are not bundled — listen to `EngineEvents.FRAME` and tick your own panel.
 
@@ -348,6 +358,41 @@ engine.setSceneObjectVisibility(id, visible)                      // Toggle visi
 `engine.sceneModel` is the root of what is actually being rendered — for `loadObject3D` that is the engine's copy, and it is the object to mutate before `refitBVH()`.
 
 `id` is the appended root's `Object3D.uuid`, returned by `addModel`/`addModelFromObject3D`. For `addModelFromObject3D` the engine carries your object's uuid onto its copy, so the id matches the object you passed. The built-in ground plane is permanent and can't be removed.
+
+##### Loading part of a scene archive
+
+A pbrt-v4 scene archive (`.tar`, `.tar.gz`, `.zip`) is usually a root `.pbrt` file that includes one
+subtree per element, and the whole thing rarely fits in a browser tab — Moana is 29 GB unpacked.
+The archive can be inspected without retaining any of it, then loaded one element at a time:
+
+```js
+const { kind, root, elements, entryCount, totalBytes } = await engine.inspectArchive(file);
+
+await engine.loadFile(file, { element: elements[0].path });   // one element
+await engine.loadFile(file, { element: [ a.path, b.path ] }); // several together
+```
+
+Everything above a chosen element comes along — the root scene file, the material library, an
+ancestor's `textures` folder — and an `Include` pointing at an element you left out only warns,
+which is what makes a partial load work. Selecting every element is a valid answer and loads the
+whole scene.
+
+Past 4 GB unpacked, a multi-element archive **throws** `ARCHIVE_NEEDS_ELEMENT` rather than taking
+all of it. The error carries the element list, so a host can turn it into a picker:
+
+```js
+try {
+  await engine.loadFile(file);
+} catch (err) {
+  if (err.code === 'ARCHIVE_NEEDS_ELEMENT') showPicker(err.elements, err.root, err.totalBytes);
+  else throw err;
+}
+```
+
+Per-load options for pbrt archives: `promptBytes` moves that 4 GB line, `maxTriangles` (default
+45M) and `maxPlacements` (default 6M) cap the build — past either, placements are skipped and the
+build reports itself truncated. 45M is the highest rung measured to survive; raising it is a
+deliberate act on a fresh browser tab.
 
 #### Settings
 
@@ -420,6 +465,8 @@ Camera switching, auto-focus, DOF, and direct Three.js access.
 ```js
 engine.cameraManager.active                  // The active PerspectiveCamera
 engine.cameraManager.controls                // The OrbitControls instance
+// Hold RMB to look and use W/A/S/D + Q/E; hold Shift for a 2× speed boost.
+engine.cameraManager.setCameraSpeedLevel(6)   // Camera movement speed, from 1 to 8
 engine.cameraManager.switchCamera(index)      // Switch between scene cameras
 engine.cameraManager.getNames()              // List available cameras
 engine.cameraManager.focusOn(center)         // Focus orbit camera on a world-space point
@@ -545,9 +592,13 @@ engine.denoisingManager.setAutoExposureParams({ keyValue: 0.18 })
 // OIDN & Upscaler
 engine.denoisingManager.setOIDNEnabled(true)
 engine.denoisingManager.setOIDNQuality('high')
+engine.denoisingManager.setStrategy('oidn')              // OIDN owns the live view; see below
+engine.denoisingManager.continuousDenoiseInterval = 250   // cap refreshes at 4/sec (default 8 = uncapped)
 engine.denoisingManager.setUpscalerEnabled(true)
-engine.denoisingManager.setUpscalerScaleFactor(2)
-engine.denoisingManager.setUpscalerQuality('high')
+engine.denoisingManager.setUpscalerBackend('dlss')        // 'esrgan' (default) | 'dlss'
+engine.denoisingManager.setUpscalerScaleFactor(2)         // ESRGAN only; DLSS is fixed at 2x
+engine.denoisingManager.setUpscalerQuality('high')        // ESRGAN only
+engine.denoisingManager.setNeuralRendering(true, { intensity: 1, colorStrength: 0 })
 ```
 
 ### engine.interactionManager
@@ -572,6 +623,88 @@ engine.transformManager.setMode('translate') // 'translate' | 'rotate' | 'scale'
 engine.transformManager.setSpace('world')    // 'world' | 'local'
 engine.transformManager.controls             // Access the underlying TransformControls
 ```
+
+### Moving and Deforming Objects
+
+Three calls update a loaded scene without rebuilding it. They differ in how much work they do, and
+picking the wrong one is the usual source of trouble.
+
+```js
+engine.updateMeshTransforms(meshIndices)            // an object moved, rotated or scaled
+engine.refitBLASes(meshIndices, positions)          // specific objects' vertices changed
+await engine.refitBVH(positions)                    // the whole scene is posed anew, e.g. animation
+```
+
+**`updateMeshTransforms` is the one a gizmo drag wants.** Triangles are stored in each object's own
+space, so a rigid move only rewrites a matrix — no vertex pass, no geometry upload. Using
+`refitBLASes` for a move instead rewrites vertices needlessly, and drags along any other object
+sharing the same geometry.
+
+All three take **indices into `engine.sceneMeshes`**, which is a depth-first walk of the rendered
+scene and includes the engine's own hidden ground disk. Build your index list from that array, never
+from your own model root, or the two orders silently disagree.
+
+Positions are **world space**, 9 floats per triangle (`ax,ay,az, bx,by,bz, cx,cy,cz`), triangles in
+index order. Two shapes are accepted:
+
+```js
+// Preferred: a per-mesh callback, asked for one mesh at a time. You may hand back the same
+// scratch buffer on every call.
+await engine.refitBVH((meshIndex, triCount) => myPositionsFor(meshIndex));
+
+// Also works: one array for every triangle in the scene, meshes in sceneMeshes order.
+// 1,030 MB at 30M triangles, and will not allocate at that size — prefer the callback.
+await engine.refitBVH(sceneWideFloat32Array);
+```
+
+Both shapes are length-checked and throw on a mismatch. Before that check existed, a short buffer
+wrote NaN through every bounding box with no error and the scene simply vanished.
+
+An object that shares its geometry with another cannot be deformed — writing its vertices would
+move every copy. `refitBLASes` skips such a mesh and records a `refit.shared_geometry` issue.
+Anything skinned or morphed is given triangles of its own at load, so this only fires when the
+wrong mesh was handed over.
+
+---
+
+### Degradation contract
+
+The engine degrades rather than fails, which is right for a viewer and backwards for a batch
+renderer, so one option decides which you get:
+
+```js
+const engine = new PathTracerApp(canvas, { strict: true });  // throw at the point of degradation
+```
+
+Lenient hosts read the log instead:
+
+```js
+engine.issues        // every recorded issue, newest last
+engine.issueErrors   // just the ones a strict host would have thrown on
+engine.addEventListener(EngineEvents.ISSUE, ({ issue }) => report(issue));
+```
+
+Each issue carries `{ code, message, detail, severity, at }`. `ISSUE_CODES` is **add-only API
+surface** — pin a version and branch on the strings; they are never renamed or repurposed.
+
+| Code | Raised when |
+|---|---|
+| `adapter.software` | the GPU is a software rasteriser (SwiftShader, llvmpipe, lavapipe, WARP) |
+| `asset.unreachable` / `asset.ambiguous_entry` | the asset could not be fetched, or an archive held several candidate models |
+| `asset.archive_too_large` / `asset.entry_too_large` | an archive or one of its entries exceeded the byte budget |
+| `texture.build_failed` / `texture.processing_fallback` / `texture.limit_exceeded` | a texture could not be built, fell back to a slower path, or exceeded the per-map-type cap |
+| `environment.load_failed` | the environment map failed to load |
+| `setting.unknown_key` | a setting name reached no stage — how a typo becomes a wrong image |
+| `render.size_declined` / `render.reserve_capped` | the requested render size or reserve exceeded device limits |
+| `stage.render_failed` | a pipeline stage threw (recorded once per stage and phase) |
+| `scene.memory_budget` | the scene needs more CPU memory than is safe, or more than is possible |
+| `emissive.instances_collapsed` | an emissive instanced mesh was too large to expand, so its copies light the scene as one |
+| `refit.shared_geometry` | a deform was asked for on a mesh that shares its triangles, and was skipped |
+
+`settings.getEffective()` is the companion for the `setting.unknown_key` case: it returns every live
+setting as `{ value, source, routed }`, and `routed: false` means stored but reaching no stage.
+
+---
 
 ### Output Methods
 
@@ -646,6 +779,33 @@ engine.vram.getReport();   // formatted one-line summary string
 `peak` is a high-water mark, reset when a final render begins (`configureForMode('production')`). The engine's VRAM is largely monotonic — the ray pool only grows and the per-stage storage textures are fixed-size — so `peak` equals `current` during a steady render and only exceeds it after memory is released (lower resolution, a smaller scene, or removing the HDRI). The `stages` + `accum` categories (fixed 2048² storage textures) dominate the baseline.
 
 The React app surfaces this as a `Memory: … | Peak: …` readout in the on-canvas stats overlay.
+
+#### CPU memory
+
+The wall a large scene hits is not VRAM, it is contiguous `ArrayBuffer` address space on the CPU —
+and how much of it a browser can still hand out falls as the tab stays up, so the same scene can
+load after a restart and fail after a long session.
+
+```js
+const { preflight, allocatedBytes, peakLiveBytes, byPhase, samples } = engine.getHostMemoryInfo();
+// null until a scene has been built
+```
+
+⚠️ Do not use `performance.memory.usedJSHeapSize` for this. It does not count `SharedArrayBuffer`,
+and the triangle and node stores are SAB-backed, so the browser's own reading under-reports a large
+scene by gigabytes.
+
+Before extraction the engine prices the scene and applies two lines, both recording
+`scene.memory_budget`:
+
+| Estimate | What happens |
+|---|---|
+| above ~7,040 MB | warns, and builds anyway |
+| above ~9,216 MB | **throws** — past this the renderer process is killed rather than throwing an error you could catch, so refusing early is the only useful answer |
+
+Raise or lower the hard line with `new PathTracerApp(canvas, { maxSceneBytes })`. The estimate runs
+low at the very top of its range, so the per-load `maxTriangles` cap (45M) is the more reliable
+guard on a scene of that size.
 
 ---
 
@@ -735,7 +895,7 @@ engine.addEventListener(EngineEvents.RENDER_COMPLETE, (e) => {
 | `RENDER_COMPLETE` | Rendering has converged |
 | `RENDER_RESET` | Accumulation buffer is reset |
 | `FRAME` | Fires once per `animate()` tick — hook external instrumentation (stats panels, telemetry) here |
-| `DENOISING_START` / `DENOISING_END` | Denoiser runs |
+| `DENOISING_START` / `DENOISING_END` | Denoiser runs. `event.continuous` is `true` for a cadence denoise of the still-accumulating image, `false` for the one that ends a render |
 | `UPSCALING_START` / `UPSCALING_PROGRESS` / `UPSCALING_END` | AI upscaler runs |
 | `LOADING_UPDATE` / `LOADING_RESET` | Asset loading progress |
 | `STATS_UPDATE` | Performance stats updated |
@@ -826,6 +986,21 @@ import {
 // VRAM accounting (VRAMTracker is also reachable as engine.vram)
 import { VRAMTracker, bufferBytes, textureBytes } from 'rayzee';
 
+// Degradation contract — see above. ISSUE_CODES is add-only; pin a version and branch on it.
+import { ISSUE_CODES, ISSUE_SEVERITY, IssueLog, EngineIssueError } from 'rayzee';
+
+// CPU memory: price a scene before loading it, or measure what can still be placed
+import {
+  MemoryLedger,
+  estimateSceneBytes,
+  probeAddressSpace,
+  SAFE_SCENE_BYTES,
+  MAX_SCENE_BYTES,
+} from 'rayzee';
+
+// Adapter description — flags software rasterisers (SwiftShader, llvmpipe, lavapipe, WARP)
+import { describeAdapter } from 'rayzee';
+
 // Dev-only: texture-binding aliasing guard. Two TextureNodes still holding the default
 // EmptyTexture when a kernel is first compiled can share one GPU binding — nothing throws,
 // the aliased node just reads someone else's texture. Off by default; costs a per-stage
@@ -849,7 +1024,10 @@ import { setBindingAudit, getBindingAuditFindings, clearBindingAuditFindings } f
 
 ### Enabling OIDN (Intel Open Image Denoise)
 
-OIDN provides high-quality AI denoising for final renders. It runs automatically after the render converges (reaches `maxSamples`).
+OIDN provides high-quality AI denoising. It runs automatically once the render converges (reaches
+`maxSamples`), and — in `'interactive'` mode — also on a cadence while the image is still
+accumulating, so a preview shows a clean picture as it refines instead of only at the end. See
+[Continuous denoising](#continuous-denoising).
 
 1. **Install the package**
 
@@ -882,6 +1060,112 @@ OIDN provides high-quality AI denoising for final renders. It runs automatically
 | `'fast-clean'` | 0.6 MB | accumulated | Converged frames, at `'fast'`'s cost |
 | `'balance'` | 1.8 MB | accumulated | General use |
 | `'high'` | 7.3 MB | accumulated | Final renders — used by `configureForMode('production')` |
+
+#### When the denoiser runs
+
+Two independent decisions, because they answer different questions — *what cleans the view while the
+render works*, and *does the finished image get a proper pass*:
+
+```js
+engine.denoisingManager.setStrategy('oidn');    // 'none' | 'edgeaware' | 'asvgf' | 'nrd' | 'oidn'
+engine.denoisingManager.setOIDNEnabled(false);  // a full OIDN pass on the finished image
+```
+
+Exactly one denoiser owns the live view, which is why OIDN is an entry in that list rather than a
+parallel switch — two of them would mean paying for a per-frame denoise whose result the OIDN
+overlay immediately covers. But choosing OIDN there says nothing about the finished image, and
+switching the final pass on says nothing about the live view. All six combinations are reachable:
+
+| `setStrategy` | `setOIDNEnabled` | Camera moving | Still, accumulating | Finished |
+|---|---|---|---|---|
+| `'none'` | `false` | raw | raw | raw |
+| `'none'` | `true` | raw | raw | OIDN |
+| `'asvgf'` | `false` | ASVGF | ASVGF | ASVGF's last frame |
+| `'asvgf'` | `true` | ASVGF | ASVGF | OIDN |
+| `'oidn'` | `false` | raw | OIDN, refreshing | one last refresh |
+| `'oidn'` | `true` | raw | OIDN, refreshing | OIDN, full quality |
+
+`denoiser.enabled` is the union of the two — "OIDN is in use at all", which is what the aux G-buffer
+wiring needs — so read the two decisions back from `denoisingManager.denoiserStrategy` and
+`denoisingManager.finalDenoise`, not from it.
+
+With OIDN on the live view and the final pass off, the render still closes with one more refresh: the
+cadence's last tick lands short of the end, and the picture should match the render that finished. On
+a 150-sample render that gap measured **11 samples at 512²** and **1 at 1024²** — larger where the
+renderer is fast, because more samples land between refreshes. It uses whatever model the refreshes
+were already on: no reload for an image the user never asked to be denoised at full quality.
+
+In the app that is `Real-Time Denoiser` (None / EdgeAware / ASVGF / NRD / **OIDN (AI)**) and the
+`Final Denoise (OIDN)` switch. Deterministic mode pins the live refreshes off, since which frame a
+wall-clock cadence lands on is not reproducible.
+
+Leaving the live view raw is not just "denoising off" — it is the only way to see the true noise
+level, which is how you judge whether a render has actually settled. That is row one and row two.
+
+#### Quality while it runs vs. quality when it finishes
+
+`oidnQuality` is **the quality of the finished image**. The refreshes along the way use the cheapest
+model that reads the same kind of aux buffer, and the chosen model is put back for the last denoise:
+
+| `oidnQuality` | refreshes use | finished image |
+|---|---|---|
+| `fast` | `fast` | `fast` |
+| `fast-clean` / `balance` / `high` | `fast-clean` | as chosen |
+
+Two constraints shape that table, and neither is optional:
+
+- **The aux kind must not change mid-render.** `setCleanAuxNormal()` throws away the accumulated
+  albedo/normal, so a refresh model that disagreed with the final one would leave the final denoise
+  reading an aux buffer one sample deep. That is why the cheap model is `fast-clean` and not `fast`.
+- **Switching models reloads the weights, ~1 s.** So it happens at most once per render, and only
+  once a denoise has actually measured too slow to be a live view (`> 120 ms`). A tier a machine can
+  afford is kept — at 512² that is every tier. The verdict survives a camera move, because the
+  device does not get faster between them; it is re-taken when the tier or the resolution changes.
+
+#### What paces the refreshes
+
+Two knobs with two different jobs, and the gap between refreshes is whichever is larger:
+
+- **The cost floor protects the renderer.** The gap is at least twice what the last denoise actually
+  cost, so denoising never takes more than about half the wall clock, at any resolution, on any GPU.
+  This is not configurable, and it is what binds at the default.
+- **`continuousDenoiseInterval` caps the refresh rate in absolute terms**, for a host that wants
+  fewer updates than the renderer could afford — a laptop on battery, or a viewport where 30 updates
+  a second is distracting. The default (8 ms) is below any real denoise cost, so it never binds:
+  refreshes run as often as the cost floor allows. Raising it gives a flat `1000 / interval` cap.
+
+Measured, `fast` model:
+
+| `continuousDenoiseInterval` | 8 | 50 | 100 | 200 | 400 |
+|---|---|---|---|---|---|
+| 512² (denoise 12 ms) | 35/sec | 18/sec | 9.6/sec | 4.9/sec | 2.6/sec |
+| 1024² (denoise 50 ms) | 9/sec | 9/sec | 9/sec | 4.9/sec | 2.6/sec |
+
+The two columns converge once the interval is the larger of the two — below that the cost floor is
+holding 1024² down to 9/sec regardless of what the interval says.
+
+A fixed millisecond interval cannot do this job: the same `fast` model measures 14 ms at 512², 48 ms
+at 1024² and ~800 ms at 2048². Measured where the GPU is saturated (1536²), the multiplier is the
+whole trade — 1x gives 1.6 refreshes/sec at 62 % of the sample rate, 2x gives 0.8/sec at 89 %, 3x
+gives 0.6/sec at 97 %.
+
+This replaced a sample-growth gate (refresh only once the sample count had grown 1.4x), which was
+written when a denoise cost 100-330 ms. Once the output pack moved to the GPU and a denoise got
+cheap, that gate only cost refreshes: removing it took 512² from 2 to 31 refreshes/sec and 1024²
+from 2 to 8.9, both at an unchanged sample rate, while 1536² and 2048² did not move at all because
+the cost floor already bound there. Refreshing faster is also *smoother*, not shimmerier — less
+changes underneath between refreshes.
+
+Nothing runs while the camera is moving; the raw frame shows during navigation.
+
+Cadence runs are tagged so a host can tell them apart from the denoise that ends a render:
+
+```js
+engine.addEventListener(EngineEvents.DENOISING_END, e => {
+  if (e.continuous) return;   // a background refresh, not the final image
+  saveResult();
+});
+```
 
 `'fast'` and `'fast-clean'` are the same network size and cost the same to run; they differ only in
 which auxiliary guide their weights expect. That makes the ordering **not** a simple quality ladder:
@@ -921,6 +1205,51 @@ engine.addEventListener(EngineEvents.UPSCALING_END,      () => console.log('Upsc
 | `'quality'` | RRDBNet / MoSR | 67 MB | 16.5 MB |
 
 **Chaining with OIDN:** Upscaling and OIDN **can** run together — on render completion, OIDN runs first, then its denoised output is fed into the upscaler. Enable both; no manual coordination required.
+
+### The DLSS passes
+
+Two further neural passes, ported from NVIDIA's DLSS weights. Both run once when a render finishes
+and both need a denoised frame — on raw Monte-Carlo noise they measurably lose to a plain resize, so
+enable OIDN alongside them.
+
+Unlike the ONNX upscaler these are **not fetched from a CDN**: `dlss-runtime.js` installs
+`globalThis.DLSSRuntime` as a side effect and cannot be imported, so the host serves it and points
+`configureAssets` at it (see above). It lives at `app/public/dlss/` in this repo, and the local edits
+it carries are written up in `app/public/dlss/PATCHES.md` — re-vendoring it without re-applying them
+breaks the retouch pass with an explanatory throw.
+
+```js
+// Super resolution, as a second AI Upscaler backend
+engine.denoisingManager.setUpscalerEnabled(true);
+engine.denoisingManager.setUpscalerBackend('dlss');
+
+// The retouch pass — appearance, not resolution. Independent of the upscaler.
+engine.denoisingManager.setNeuralRendering(true, {
+  intensity: 1,        // 0..1   how much of the pass reaches the image
+  localTone: 1,        // 0..2   local light shaping; 1 is neutral
+  localStructure: 1,   // 0..2   fine surface detail; 1 is neutral
+  colorStrength: 0,    // 0..1   0 keeps the render's chroma, 1 takes the model's
+});
+```
+
+The chain is **denoise → retouch (at render size) → super resolution (2x) → tone map**, scene-referred
+throughout. The retouch pass runs *before* the upscale deliberately: it sees a quarter of the pixels
+there, and above `DLSS_NR_MAX_PIXELS` (4.19 MP) it takes minutes and then loses every GPU device in
+the page. `DenoisingManager` skips it above that size rather than letting it run.
+
+| | Super resolution | Retouch |
+|---|---|---|
+| What it changes | Resolution, fixed 2x | Appearance only |
+| Weights | 3.2 MB | 141 MB, fetched on first use |
+| Cost (1.9M-tri interior, warm) | 260 ms at 1024²→2048², 947 ms at 2048²→4096² | ~6 s at 2048² |
+| Against a native render | Ties Real-ESRGAN on accuracy, 3x faster, sharper than native | Close to a no-op on path-traced images |
+
+Exported for building UI against: `SR_SCALE`, `SR_MAX_INPUT`, `DLSS_NR_DEFAULTS`, `DLSS_NR_RANGES`,
+`DLSS_NR_MAX_PIXELS`, and `renderUpscaled( app, { outputWidth, outputHeight, samples } )` — the
+offline entry point that drives a half-size render, denoise and upscale in one call.
+
+⚠️ Each model brings **its own `GPUDevice`**, built by the runtime and not shareable. With both on,
+the page holds three: the renderer's and one each.
 
 ## Troubleshooting
 

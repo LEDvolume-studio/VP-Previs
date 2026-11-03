@@ -114,6 +114,10 @@ export const ENGINE_DEFAULTS = {
 	focalLength: 50,
 	apertureScale: 1.0,
 	anamorphicRatio: 1.0,
+	// Legacy preserves saved shots; physical/look opt into the upstream lens models.
+	dofMode: 'legacy',
+	dofBlur: 0.05,
+	unitsPerMetre: 1,
 
 	// Auto-focus
 	autoFocusMode: 'auto', // 'manual' | 'auto'
@@ -186,7 +190,15 @@ export const ENGINE_DEFAULTS = {
 
 	enableOIDN: false,
 	oidnQuality: 'fast',
-	debugGbufferMaps: false,
+	// OIDN as the live-view denoiser, refreshing the accumulating image. Set by choosing 'oidn' in
+	// the real-time denoiser list, so that only ever one thing denoises the live view — not by
+	// `enableOIDN`, which is the separate question of whether the finished image gets a pass.
+	continuousDenoise: false,
+	// Lower bound on the gap between cadence denoises. DenoisingManager also floors that gap at a
+	// multiple of what the last denoise actually cost, and above ~1024² that is what binds — this
+	// value only governs where a denoise is cheap. 8 ms measured 31 refreshes/sec at 512² at an
+	// unchanged sample rate; 50 ms measured 18/sec for nothing in return.
+	continuousDenoiseInterval: 8,
 
 	enableUpscaler: false,
 	upscalerScale: 2,
@@ -224,6 +236,10 @@ export const ENGINE_DEFAULTS = {
 	asvgfQualityPreset: 'medium',
 	showAsvgfHeatmap: false,
 
+	// NRD (ReBLUR port) real-time denoiser — see NRD_DEFAULTS / NRD_QUALITY_PRESETS.
+	nrdQualityPreset: 'medium',
+	nrdDebugMode: 0,
+
 	// Auto-exposure settings
 	autoExposure: false,
 	autoExposureKeyValue: 0.18,
@@ -232,6 +248,16 @@ export const ENGINE_DEFAULTS = {
 	autoExposureAdaptSpeedBright: 3.0,
 	autoExposureAdaptSpeedDark: 0.5,
 };
+
+// Ray distance NormalDepth writes on a miss. Max finite half-float, so miss−miss diffs stay 0
+// rather than Inf−Inf=NaN.
+export const GBUFFER_MISS_DEPTH = 65504.0;
+export const GBUFFER_MISS_THRESHOLD = 6e4;
+
+// normHitDist = hitDist / (A + B·viewZ). A constant, not a uniform: the Shade write and the NRD
+// decode must agree, and the normalization is a pure round trip.
+export const NRD_HIT_DIST_A = 3.0;
+export const NRD_HIT_DIST_B = 0.1;
 
 // Albedo demodulation safety floor. ASVGF and BilateralFilter MUST use the
 // same value — demod (`color / safeAlbedo`) and remod (`lighting * safeAlbedo`)
@@ -307,10 +333,71 @@ export const ASVGF_QUALITY_PRESETS = {
 	}
 };
 
+// NRD ReBLUR port (Stages/NRD.js). Names follow nrd::ReblurSettings so NVIDIA's tuning notes apply.
+export const NRD_DEFAULTS = {
+	maxAccumulatedFrameNum: 30,
+	maxFastAccumulatedFrameNum: 6,
+	maxStabilizedFrameNum: 63,
+	historyFixFrameNum: 3,
+	historyFixBasePixelStride: 14,
+	prepassBlurRadius: 30,
+	minBlurRadius: 1,
+	maxBlurRadius: 30,
+	lobeAngleFraction: 0.15,
+	roughnessFraction: 0.15,
+	planeDistanceSensitivity: 0.02,
+	minHitDistanceWeight: 0.1,
+	fastHistoryClampingSigmaScale: 2.0,
+	fireflySuppressorMinRelativeScale: 2.0,
+	enableAntiFirefly: true,
+	antilagLuminanceSigmaScale: 2.0,
+	antilagLuminanceSensitivity: 3.0,
+	disocclusionThreshold: 0.01,
+	convergenceS: 1.0,
+	convergenceB: 0.2,
+	convergenceP: 0.8,
+	// Share of the lobe the normal weight accepts before any history exists. NRD's own constant is
+	// 0.75, which its source flags as probably too much; at that width it smears curved surfaces.
+	lobeVolumePercent: 0.1,
+	// Progressive handover: input sample count at which the denoiser passes the render through untouched.
+	// 0 = 2 · maxAccumulatedFrameNum.
+	handoverFrames: 0,
+};
+
+// Keys a preset may override. Applying one resets every key to its default first, so a preset only
+// states its deltas and `medium` can be empty.
+export const NRD_PRESET_KEYS = [
+	'maxAccumulatedFrameNum', 'maxFastAccumulatedFrameNum', 'maxStabilizedFrameNum',
+	'historyFixFrameNum', 'prepassBlurRadius', 'maxBlurRadius', 'enableAntiFirefly',
+];
+
+export const NRD_QUALITY_PRESETS = {
+	// Short history + no pre-pass: most responsive, noisiest.
+	low: {
+		maxAccumulatedFrameNum: 16,
+		maxFastAccumulatedFrameNum: 4,
+		maxStabilizedFrameNum: 16,
+		historyFixFrameNum: 2,
+		prepassBlurRadius: 0,
+		maxBlurRadius: 20,
+		enableAntiFirefly: false,
+	},
+	// nrd::ReblurSettings defaults.
+	medium: {},
+	// Longer history and wider kernels: smoother, more lag on lighting change.
+	high: {
+		maxAccumulatedFrameNum: 45,
+		maxFastAccumulatedFrameNum: 8,
+		historyFixFrameNum: 4,
+		prepassBlurRadius: 40,
+		maxBlurRadius: 40,
+	},
+};
+
 export const CAMERA_RANGES = {
 	fov: {
 		min: 10,
-		max: 90,
+		max: 125,
 		default: ENGINE_DEFAULTS.fov
 	},
 	focusDistance: {
@@ -323,7 +410,7 @@ export const CAMERA_RANGES = {
 		default: ENGINE_DEFAULTS.aperture
 	},
 	focalLength: {
-		min: 0,
+		min: 10,
 		max: 200,
 		default: ENGINE_DEFAULTS.focalLength
 	}
@@ -382,6 +469,7 @@ export const SKY_PRESETS = {
 
 export const CAMERA_PRESETS = {
 	portrait: {
+		dofBlur: 0.1,
 		name: "Portrait",
 		description: "Shallow depth of field, background blur",
 		fov: 45,
@@ -391,6 +479,7 @@ export const CAMERA_PRESETS = {
 		apertureScale: 1.5
 	},
 	landscape: {
+		dofBlur: 0.001,
 		name: "Landscape",
 		description: "Maximum depth of field, everything in focus",
 		fov: 65,
@@ -400,6 +489,7 @@ export const CAMERA_PRESETS = {
 		apertureScale: 0.5
 	},
 	macro: {
+		dofBlur: 0.14,
 		name: "Macro",
 		description: "Extreme close-up with thin focus plane",
 		fov: 40,
@@ -409,6 +499,7 @@ export const CAMERA_PRESETS = {
 		apertureScale: 2.0
 	},
 	product: {
+		dofBlur: 0.013,
 		name: "Product",
 		description: "Sharp detail with subtle background separation",
 		fov: 50,
@@ -418,6 +509,7 @@ export const CAMERA_PRESETS = {
 		apertureScale: 1.0
 	},
 	architectural: {
+		dofBlur: 0.001,
 		name: "Architectural",
 		description: "Wide view with deep focus",
 		fov: 75,
@@ -427,6 +519,7 @@ export const CAMERA_PRESETS = {
 		apertureScale: 0.5
 	},
 	cinematic: {
+		dofBlur: 0.13,
 		name: "Cinematic",
 		description: "Dramatic depth separation with anamorphic bokeh",
 		fov: 35,
@@ -450,24 +543,121 @@ export const AF_DEFAULTS = {
 	SNAP_THRESHOLD: 0.5,
 };
 
-// Triangle data layout constants - shared between GeometryExtractor and TextureCreator
+/**
+ * Triangle record: 5 uvec4 lanes (80 bytes). The buffer is declared `uvec4` so packed lanes
+ * keep their exact bit pattern — a packSnorm2x16 result can land in the f32 NaN range, and an
+ * f32 lane may canonicalise it (the same reason the G-buffer is uvec4). Positions and UVs are
+ * written as f32 through a Float32Array view of the same memory and read back with
+ * `uintBitsToFloat`, so they carry full precision; only normals are compressed.
+ *
+ * Was 32 floats (128 B) with 4 dead padding lanes. At 128 B the 2 GB V8 ArrayBuffer cap put a
+ * hard ceiling of 16.7M triangles on the scene — 80 B lifts that to 26.8M and cuts geometry
+ * VRAM by the same 37.5%. Each normal now rides in its position's spare .w lane, so the three
+ * vec4 loads the intersection test already does carry the normals with them.
+ */
 export const TRIANGLE_DATA_LAYOUT = {
-	FLOATS_PER_TRIANGLE: 32,
+	FLOATS_PER_TRIANGLE: 20,
 
-	// Positions (3 vec4s = 12 floats)
-	POSITION_A_OFFSET: 0,
+	POSITION_A_OFFSET: 0, // f32 xyz + packed normal A
 	POSITION_B_OFFSET: 4,
 	POSITION_C_OFFSET: 8,
 
-	// Normals (3 vec4s = 12 floats)
-	NORMAL_A_OFFSET: 12,
-	NORMAL_B_OFFSET: 16,
-	NORMAL_C_OFFSET: 20,
+	NORMAL_A_PACKED_OFFSET: 3, // oct16 in each position's .w lane
+	NORMAL_B_PACKED_OFFSET: 7,
+	NORMAL_C_PACKED_OFFSET: 11,
 
-	// UVs and Material (2 vec4s = 8 floats)
-	UV_AB_OFFSET: 24,
-	UV_C_MAT_OFFSET: 28
+	UV_AB_OFFSET: 12, // f32 uvA.xy, uvB.xy
+	UV_C_OFFSET: 16, // f32 uvC.xy
+	MATERIAL_FLAGS_OFFSET: 18, // materialIndex | side << 24 | shadowBlockerBits << 26 (two bits)
+	MESH_INDEX_OFFSET: 19
 };
+
+export const TRI_MATERIAL_MASK = 0xffffff;
+export const TRI_SIDE_SHIFT = 24; // 0 front, 1 back, 2 double
+export const TRI_BLOCKER_SHIFT = 26; // 1 = blocks shadow rays whatever the settings
+export const TRI_BLOCKER_ALPHA_SHIFT = 27; // 1 = blocks them unless alpha-cutout shadows are on
+
+/**
+ * How a shadow ray settles on this material without fetching it, mirroring traceShadowRay:
+ * bit 0 set = always a blocker; bit 1 set = a blocker while alpha-cutout shadows are off
+ * (MASK/BLEND with nothing else letting light through); 0 = light may pass, so the shadow
+ * traversal has to find the nearest such surface.
+ */
+export function shadowBlockerBits( material ) {
+
+	if ( ! material ) return 0;
+	const solid = ( material.transmission || 0 ) === 0
+		&& ( ( material.transparent | 0 ) === 0 || ( material.opacity ?? 1 ) >= 1 );
+	if ( ! solid ) return 0;
+	return ( material.alphaMode | 0 ) === 0 ? 1 : 2;
+
+}
+
+/**
+ * Material index plus the per-triangle flags the shader reads without touching the
+ * material buffer: `side` for inline culling and the two shadow-blocker bits.
+ */
+export function packTriangleFlags( materialIndex, material ) {
+
+	return ( ( materialIndex & TRI_MATERIAL_MASK )
+		| ( ( material?.side ?? 0 ) << TRI_SIDE_SHIFT )
+		| ( shadowBlockerBits( material ) << TRI_BLOCKER_SHIFT ) ) >>> 0;
+
+}
+
+/**
+ * Octahedral-encode a unit normal into one u32 (two snorm16). Worst-case error is ~0.03°,
+ * well under what normal maps and barycentric interpolation already contribute.
+ * A degenerate (zero-length) normal encodes as +Z rather than NaN.
+ */
+export function packNormalOct( x, y, z ) {
+
+	const len = Math.sqrt( x * x + y * y + z * z );
+	if ( len > 0 ) {
+
+		x /= len; y /= len; z /= len;
+
+	} else {
+
+		x = 0; y = 0; z = 1;
+
+	}
+
+	const sum = Math.abs( x ) + Math.abs( y ) + Math.abs( z );
+	let u = x / sum, v = y / sum;
+	if ( z < 0 ) {
+
+		const au = u, av = v;
+		u = ( 1 - Math.abs( av ) ) * ( au >= 0 ? 1 : - 1 );
+		v = ( 1 - Math.abs( au ) ) * ( av >= 0 ? 1 : - 1 );
+
+	}
+
+	const qu = Math.round( Math.min( 1, Math.max( - 1, u ) ) * 32767 ) & 0xffff;
+	const qv = Math.round( Math.min( 1, Math.max( - 1, v ) ) * 32767 ) & 0xffff;
+	return ( ( qv << 16 ) | qu ) >>> 0;
+
+}
+
+/** Inverse of packNormalOct; writes into `out` (length >= 3) and returns it. */
+export function unpackNormalOct( packed, out ) {
+
+	const u = ( ( packed << 16 ) >> 16 ) / 32767;
+	const v = ( packed >> 16 ) / 32767;
+	let x = u, y = v, z = 1 - Math.abs( u ) - Math.abs( v );
+	if ( z < 0 ) {
+
+		const ax = x, ay = y;
+		x = ( 1 - Math.abs( ay ) ) * ( ax >= 0 ? 1 : - 1 );
+		y = ( 1 - Math.abs( ax ) ) * ( ay >= 0 ? 1 : - 1 );
+
+	}
+
+	const len = Math.sqrt( x * x + y * y + z * z ) || 1;
+	out[ 0 ] = x / len; out[ 1 ] = y / len; out[ 2 ] = z / len;
+	return out;
+
+}
 
 // Material data layout constants — single source of truth for material buffer offsets.
 // Shared between CPU writers (TextureCreator, MaterialDataManager) and GPU readers (Common.js getMaterial).
@@ -569,10 +759,68 @@ export const MATERIAL_DATA_LAYOUT = {
 export const normalizeAttenuationDistance = d => ( Number.isFinite( d ) && d > 0 ? d : 0 );
 
 // BVH node leaf markers
+/**
+ * Node tags, written into slot [3] of a BVH node as a raw u32 bit pattern.
+ *
+ * Node indices, triangle offsets and counts are integers living inside a Float32Array. Written as
+ * float *values* they round silently past 2^24 (16,777,216): in a 24M-node scene half of every
+ * BLAS pointer landed on a neighbouring node and that geometry vanished from the render with no
+ * error at all. Every one of those fields is written as a u32 bit pattern instead, exact to 2^30.
+ *
+ * Tags sit above {@link BVH_MAX_INDEX} so a single unsigned compare separates a leaf from an inner
+ * node's left-child index. All three are ordinary finite floats — nothing lands in the NaN range,
+ * which an f32 storage buffer is free to canonicalise.
+ */
+export const BVH_MAX_INDEX = 0x40000000; // 2^30
+
+/**
+ * Slot [1] of a BLAS-pointer leaf holds its placement index, which {@link BVH_MAX_INDEX} keeps
+ * below 2^30. Bit 30 is therefore free to say the leaf's matrix is identity: geometry no other
+ * placement shares is baked to world space at extraction, and a ray reaching it needs no
+ * transform at all. Mask the bit off before using the slot as an index.
+ */
+export const TLAS_LEAF_IDENTITY = 0x40000000;
+export const TLAS_PLACEMENT_MASK = 0x3fffffff;
+
 export const BVH_LEAF_MARKERS = {
-	TRIANGLE_LEAF: - 1, // Leaf containing triangle references
-	BLAS_POINTER_LEAF: - 2, // TLAS leaf pointing to a BLAS root node
+	TRIANGLE_LEAF: 0x40000000, // leaf containing triangle references
+	BLAS_POINTER_LEAF: 0x40000001, // TLAS leaf pointing to a BLAS root node
+	FRONTIER: 0x40000002, // parallel-build placeholder, overwritten during assembly
 };
+
+/** A u32 view over a float buffer, for writing index fields as exact bit patterns. */
+export function bvhIndexView( f32 ) {
+
+	return new Uint32Array( f32.buffer, f32.byteOffset, f32.length );
+
+}
+
+/**
+ * Refuse to build a BVH whose indices would collide with the leaf tags.
+ *
+ * Throws rather than degrades: the failure this replaces was a scene that rendered with half its
+ * geometry silently missing, which is far worse than a scene that refuses to load. Guarding the
+ * totals covers every individual write, since no index can exceed the count it indexes into.
+ *
+ * @param {number} count - node or triangle total about to be indexed
+ * @param {string} what - what the count is, for the message
+ * @throws {RangeError}
+ */
+export function assertBVHIndexFits( count, what ) {
+
+	if ( count >= BVH_MAX_INDEX ) {
+
+		throw new RangeError(
+			`${what} is ${count.toLocaleString()}, at or past the BVH index limit of ` +
+			`${BVH_MAX_INDEX.toLocaleString()}. Node indices are stored as u32 bit patterns and the ` +
+			'leaf tags occupy everything above that.'
+		);
+
+	}
+
+	return count;
+
+}
 
 // Texture processing constants
 export const TEXTURE_CONSTANTS = {
@@ -591,11 +839,11 @@ export const TEXTURE_CONSTANTS = {
 	MAX_TEXTURE_SIZE: 8192,
 	// Default cap applied when no maxTextureSize is supplied (engine standalone use).
 	DEFAULT_MAX_TEXTURE_SIZE: 4096,
-	// Max layers (textures) per bucket array. Also the packing stride for (bucket, layer).
-	MAX_TEXTURES_LIMIT: 128,
-	// Size buckets per colorSpace pool. Material maps are grouped into this many
-	// longest-edge size classes so a small map no longer pays a large neighbour's
-	// footprint. 4 → ~8 bound material arrays (4 sRGB + 4 linear).
+	// Per-map-type ceiling before bucketing; the real cap is per (pool, bucket) in _bucketTextures.
+	MAX_TEXTURES_LIMIT: 4 * 256,
+	// Array shapes per colorSpace pool. Material maps are grouped into this many
+	// (width, height) classes so a small or oddly-shaped map no longer pays a large
+	// neighbour's footprint. 4 → ~8 bound material arrays (4 sRGB + 4 linear).
 	MATERIAL_BUCKET_COUNT: 4,
 	// Packing stride: a map's stored index encodes bucketId * BUCKET_LAYER_STRIDE + layer.
 	// Also the per-bucket layer cap. Kept at the WebGPU portable maxTextureArrayLayers floor (256)
@@ -603,30 +851,208 @@ export const TEXTURE_CONSTANTS = {
 	BUCKET_LAYER_STRIDE: 256,
 };
 
-// Longest-edge size ladder for a given cap, ascending.
-// cap=4096, count=4 → [512, 1024, 2048, 4096].
-export function getTextureBucketSizes( maxTextureSize, count = TEXTURE_CONSTANTS.MATERIAL_BUCKET_COUNT ) {
+// An RGBA8 row upload must be a multiple of 256 bytes, so bucket widths land on 64 texels.
+const BUCKET_WIDTH_ALIGN = 64;
 
-	const sizes = [];
-	for ( let i = count - 1; i >= 0; i -- ) {
+export function alignBucketWidth( width, maxTextureSize ) {
 
-		sizes.push( Math.max( TEXTURE_CONSTANTS.MIN_TEXTURE_WIDTH, Math.round( maxTextureSize / Math.pow( 2, i ) ) ) );
-
-	}
-
-	return sizes;
+	const aligned = Math.ceil( Math.max( 1, width ) / BUCKET_WIDTH_ALIGN ) * BUCKET_WIDTH_ALIGN;
+	return Math.min( maxTextureSize, Math.max( TEXTURE_CONSTANTS.MIN_TEXTURE_WIDTH, aligned ) );
 
 }
 
-// Bucket index for a texture, by its power-of-2 longest edge vs the cap's ladder.
-// Larger-than-cap maps land in the top bucket (downscaled to cap, as before).
-export function getTextureBucketId( width, height, maxTextureSize, count = TEXTURE_CONSTANTS.MATERIAL_BUCKET_COUNT ) {
+function bucketOf( units ) {
 
-	const longest = Math.max( width || 1, height || 1 );
-	const pot = Math.pow( 2, Math.ceil( Math.log2( longest ) ) );
-	const sizes = getTextureBucketSizes( maxTextureSize, count );
-	for ( let i = 0; i < sizes.length; i ++ ) if ( pot <= sizes[ i ] ) return i;
-	return sizes.length - 1;
+	let width = 0, height = 0, count = 0;
+	for ( const unit of units ) {
+
+		width = Math.max( width, unit.width );
+		height = Math.max( height, unit.height );
+		count += unit.count;
+
+	}
+
+	return { units, width, height, count };
+
+}
+
+// Footprint times layer count.
+function bucketCost( bucket, maxTextureSize ) {
+
+	return alignBucketWidth( bucket.width, maxTextureSize ) * bucket.height * bucket.count * 4;
+
+}
+
+function totalCost( buckets, maxTextureSize ) {
+
+	return buckets.reduce( ( sum, b ) => sum + bucketCost( b, maxTextureSize ), 0 );
+
+}
+
+// Repeatedly fuse the pair of buckets whose union wastes least, until `count` remain.
+function mergeDown( buckets, count, maxTextureSize ) {
+
+	let current = buckets.slice();
+
+	while ( current.length > count ) {
+
+		let best = null;
+
+		for ( let i = 0; i < current.length; i ++ ) {
+
+			for ( let j = i + 1; j < current.length; j ++ ) {
+
+				const fused = bucketOf( current[ i ].units.concat( current[ j ].units ) );
+				const delta = bucketCost( fused, maxTextureSize )
+					- bucketCost( current[ i ], maxTextureSize ) - bucketCost( current[ j ], maxTextureSize );
+				if ( ! best || delta < best.delta ) best = { i, j, delta, fused };
+
+			}
+
+		}
+
+		current = current.filter( ( _, k ) => k !== best.i && k !== best.j ).concat( [ best.fused ] );
+
+	}
+
+	return current;
+
+}
+
+// The pre-shape-aware layout, kept as a rival opening: square scenes still do well on it.
+function ladderBuckets( units, count, maxTextureSize ) {
+
+	const ladder = [];
+	for ( let i = count - 1; i >= 0; i -- ) {
+
+		ladder.push( Math.max( TEXTURE_CONSTANTS.MIN_TEXTURE_WIDTH, Math.round( maxTextureSize / Math.pow( 2, i ) ) ) );
+
+	}
+
+	const bins = ladder.map( () => [] );
+
+	for ( const unit of units ) {
+
+		const longest = Math.pow( 2, Math.ceil( Math.log2( Math.max( unit.width, unit.height ) ) ) );
+		let slot = ladder.findIndex( size => longest <= size );
+		if ( slot < 0 ) slot = ladder.length - 1;
+		bins[ slot ].push( unit );
+
+	}
+
+	return bins.filter( bin => bin.length ).map( bucketOf );
+
+}
+
+// Both openings above are greedy and stop short on mixed aspects; moving one shape at a time
+// to whichever bucket makes the pool cheapest recovers the difference.
+function refine( buckets, maxTextureSize ) {
+
+	let current = buckets;
+
+	for ( let pass = 0; pass < 8; pass ++ ) {
+
+		let improved = false;
+
+		for ( const unit of current.flatMap( b => b.units ) ) {
+
+			const from = current.findIndex( b => b.units.includes( unit ) );
+			if ( from < 0 ) continue;
+
+			for ( let to = 0; to < current.length; to ++ ) {
+
+				if ( to === from ) continue;
+
+				const moved = [];
+				for ( let i = 0; i < current.length; i ++ ) {
+
+					if ( i === from ) {
+
+						const rest = current[ i ].units.filter( u => u !== unit );
+						if ( rest.length ) moved.push( bucketOf( rest ) );
+
+					} else if ( i === to ) moved.push( bucketOf( current[ i ].units.concat( [ unit ] ) ) );
+					else moved.push( current[ i ] );
+
+				}
+
+				if ( totalCost( moved, maxTextureSize ) < totalCost( current, maxTextureSize ) ) {
+
+					current = moved;
+					improved = true;
+					break;
+
+				}
+
+			}
+
+		}
+
+		if ( ! improved ) break;
+
+	}
+
+	return current;
+
+}
+
+/**
+ * Choose up to `count` array shapes for one colorSpace pool. Grouping by longest edge alone
+ * forces a 2000x453 banner into a 2048x2048 array; grouping on both axes does not.
+ *
+ * @param {Array<{width: number, height: number}>} sizes - every texture in the pool
+ * @param {number} maxTextureSize
+ * @param {number} [count]
+ * @returns {Array<{width: number, height: number}>} ascending by footprint
+ */
+export function planTextureBuckets( sizes, maxTextureSize, count = TEXTURE_CONSTANTS.MATERIAL_BUCKET_COUNT ) {
+
+	const distinct = new Map();
+
+	for ( const { width, height } of sizes ) {
+
+		const w = Math.min( maxTextureSize, Math.max( 1, width || 1 ) );
+		const h = Math.min( maxTextureSize, Math.max( 1, height || 1 ) );
+		const key = `${w}x${h}`;
+		const seen = distinct.get( key );
+		if ( seen ) seen.count ++;
+		else distinct.set( key, { width: w, height: h, count: 1 } );
+
+	}
+
+	const units = [ ...distinct.values() ];
+	let buckets = units.map( unit => bucketOf( [ unit ] ) );
+
+	if ( buckets.length > count ) {
+
+		const ladder = ladderBuckets( units, count, maxTextureSize );
+		const merged = mergeDown( buckets, count, maxTextureSize );
+		buckets = totalCost( ladder, maxTextureSize ) < totalCost( merged, maxTextureSize ) ? ladder : merged;
+		buckets = refine( buckets, maxTextureSize );
+
+	}
+
+	return buckets
+		.map( b => ( { width: alignBucketWidth( b.width, maxTextureSize ), height: b.height } ) )
+		.sort( ( a, b ) => a.width * a.height - b.width * b.height );
+
+}
+
+/**
+ * Index of the cheapest planned bucket that can hold a texture at its native size.
+ * A texture larger than every bucket lands in the largest and is downscaled there.
+ *
+ * @param {number} width
+ * @param {number} height
+ * @param {Array<{width: number, height: number}>} shapes - from {@link planTextureBuckets}
+ * @returns {number}
+ */
+export function getTextureBucketId( width, height, shapes ) {
+
+	const w = Math.max( 1, width || 1 );
+	const h = Math.max( 1, height || 1 );
+	for ( let i = 0; i < shapes.length; i ++ ) if ( shapes[ i ].width >= w && shapes[ i ].height >= h ) return i;
+	return Math.max( 0, shapes.length - 1 );
 
 }
 
@@ -663,7 +1089,11 @@ export const INTERACTIVE_RENDER_CONFIG = {
 	renderMode: ENGINE_DEFAULTS.renderMode, enableAlphaShadows: ENGINE_DEFAULTS.enableAlphaShadows,
 	transmissiveBounces: ENGINE_DEFAULTS.transmissiveBounces,
 	maxSubsurfaceSteps: ENGINE_DEFAULTS.maxSubsurfaceSteps,
-	enableOIDN: false, oidnQuality: 'fast',
+	// On, like production. The final pass costs one cheap denoise when the preview settles, and both
+	// neural passes need a denoised frame to be worth running — on Monte-Carlo noise the upscaler
+	// measured worse than a plain resize. ⚠️ `ENGINE_DEFAULTS.enableOIDN` stays false: the bench
+	// renders against it and every quality golden would move.
+	enableOIDN: true, oidnQuality: 'fast',
 	interactionModeEnabled: true,
 	useAdaptiveSampling: true, // idle refine stops early when converged; frozen during motion
 	noiseThreshold: 0.1, // loose: preview wants a fast settle, not a clean one

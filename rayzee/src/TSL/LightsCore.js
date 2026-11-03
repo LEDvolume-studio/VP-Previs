@@ -59,6 +59,7 @@ export const PointLight = struct( {
 	intensity: 'float',
 	distance: 'float', // cutoff distance (0 = infinite)
 	decay: 'float', // decay exponent (2 = physically correct)
+	radius: 'float', // 0 = a point; else a disc of this radius facing the lit point (Cycles' soft falloff)
 } );
 
 export const SpotLight = struct( {
@@ -74,6 +75,7 @@ export const SpotLight = struct( {
 	goboIntensity: 'float', // mask strength multiplier (0 = no mask, 1 = full mask)
 	iesIndex: 'int', // -1 = no IES, otherwise index into iesProfiles array
 	iesIntensity: 'float', // blend [0,1] between flat (0) and full IES distribution (1)
+	radius: 'float', // as PointLight's
 } );
 
 export const LightSample = struct( {
@@ -172,7 +174,7 @@ export const getAreaLight = Fn( ( [ areaLightsBuffer, index ] ) => {
 
 export const getPointLight = Fn( ( [ pointLightsBuffer, index ] ) => {
 
-	const baseIndex = index.mul( 9 );
+	const baseIndex = index.mul( 10 );
 	return PointLight( {
 		position: vec3(
 			pointLightsBuffer.element( baseIndex ),
@@ -187,6 +189,7 @@ export const getPointLight = Fn( ( [ pointLightsBuffer, index ] ) => {
 		intensity: pointLightsBuffer.element( baseIndex.add( 6 ) ),
 		distance: pointLightsBuffer.element( baseIndex.add( 7 ) ),
 		decay: pointLightsBuffer.element( baseIndex.add( 8 ) ),
+		radius: pointLightsBuffer.element( baseIndex.add( 9 ) ),
 	} );
 
 } );
@@ -219,7 +222,8 @@ export const getSpotLight = Fn( ( [ spotLightsBuffer, index ] ) => {
 		goboIntensity: spotLightsBuffer.element( baseIndex.add( 15 ) ),
 		iesIndex: int( spotLightsBuffer.element( baseIndex.add( 16 ) ) ),
 		iesIntensity: spotLightsBuffer.element( baseIndex.add( 17 ) ),
-		// slots 18, 19 reserved (vec4 padding)
+		radius: spotLightsBuffer.element( baseIndex.add( 18 ) ),
+		// slot 19 reserved (vec4 padding)
 	} );
 
 } );
@@ -251,10 +255,15 @@ export const getDistanceAttenuation = /*@__PURE__*/ wgslFn( `
 	}
 ` );
 
-// Spot light attenuation
+// Spot cone falloff, Blender/Cycles' shape: the soft edge is a smoothstep over a band of
+// COSINE width (1 - cosCone) * blend, not one that ends at the inner cone's angle. The two
+// agree at blend 0 and 1 and diverge in between — three.js' ramp ran twice as wide at 0.5,
+// leaving the penumbra up to 2x dark against a Cycles render of the same lamp.
 export const getSpotAttenuation = /*@__PURE__*/ wgslFn( `
-	fn getSpotAttenuation( coneCosine: f32, penumbraCosine: f32, angleCosine: f32 ) -> f32 {
-		return smoothstep( coneCosine, penumbraCosine, angleCosine );
+	fn getSpotAttenuation( coneCosine: f32, blend: f32, angleCosine: f32 ) -> f32 {
+		let smoothWidth = ( 1.0 - coneCosine ) * blend;
+		if ( smoothWidth <= 0.0 ) { return 1.0; }
+		return smoothstep( 0.0, 1.0, ( angleCosine - coneCosine ) / smoothWidth );
 	}
 ` );
 

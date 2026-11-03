@@ -1,0 +1,23 @@
+{
+  "d1_databases": {
+    "DB": { "id": "68cb01ea-7596-4d5e-b2e3-38fb88c59991" },
+    "ADMIN_AUTH_DB": { "id": "68cb01ea-7596-4d5e-b2e3-38fb88c59991" }
+  },
+  "r2_buckets": {
+    "LIBRARY": { "name": "vp-previs-library" },
+    "DOCUMENTS": { "name": "vp-previs-library" },
+    "NARRATION": { "name": "vp-previs-library" }
+  },
+  "env_vars": {
+    "ENABLE_ACCOUNT_API": { "type": "plain_text", "value": "true" },
+    "ENABLE_ACCOUNT_WRITES": { "type": "plain_text", "value": "true" },
+    "ENABLE_DRAFT_API": { "type": "plain_text", "value": "false" },
+    "ENABLE_HOSTED_ADMIN_AUTH": { "type": "plain_text", "value": "true" },
+    "MAX_JSON_BYTES": { "type": "plain_text", "value": "2097152" },
+    "MAX_NARRATION_BYTES": { "type": "plain_text", "value": "16777216" },
+    "MAX_LIBRARY_ASSET_BYTES": { "type": "plain_text", "value": "134217728" },
+    "MAX_DRAFT_REVISIONS": { "type": "plain_text", "value": "10000" },
+    "MAX_DRAFT_MEDIA": { "type": "plain_text", "value": "100" },
+    "MAX_DRAFT_CREATIONS_PER_MINUTE": { "type": "plain_text", "value": "30" }
+  }
+}

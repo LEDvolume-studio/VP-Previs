@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ColorInput } from "@/components/ui/colorinput";
 import { usePathTracerStore } from '@/store';
 import { ControlGroup } from '@/components/ui/control-group';
+import NeuralPostControls from './NeuralPostControls';
 import { Row } from '@/components/ui/row';
 import { SliderToggle } from '@/components/ui/slider-toggle';
 import { Exposure } from '@/assets/icons';
@@ -149,7 +150,7 @@ const PathTracerTab = () => {
 	// Destructure all state and handlers from the store
 	const {
 		// State
-		enablePathTracer,
+		pathTracerActive,
 		enableAccumulation,
 		bounces,
 		transmissiveBounces,
@@ -162,9 +163,6 @@ const PathTracerTab = () => {
 		showInspector,
 		oidnQuality,
 		enableOIDN,
-		enableUpscaler,
-		upscalerScale,
-		upscalerQuality,
 		exposure,
 		saturation,
 		enableEnvironment,
@@ -206,6 +204,12 @@ const PathTracerTab = () => {
 		asvgfQualityPreset,
 		asvgfDebugMode,
 		showAsvgfHeatmap,
+		nrdQualityPreset,
+		nrdDebugMode,
+		nrdMaxAccumulatedFrameNum,
+		nrdMaxBlurRadius,
+		nrdPrepassBlurRadius,
+		nrdAntiFirefly,
 		denoiserStrategy,
 		filterStrength,
 		edgeAtrousIterations,
@@ -235,9 +239,6 @@ const PathTracerTab = () => {
 		handleConvergenceOverlayChange,
 		handleOidnQualityChange,
 		handleEnableOIDNChange,
-		handleEnableUpscalerChange,
-		handleUpscalerScaleChange,
-		handleUpscalerQualityChange,
 		handleDebugThresholdChange,
 		handleDebugModeChange,
 		handleInspectorToggle,
@@ -276,6 +277,12 @@ const PathTracerTab = () => {
 		handleAsvgfQualityPresetChange,
 		handleAsvgfDebugModeChange,
 		handleShowAsvgfHeatmapChange,
+		handleNrdQualityPresetChange,
+		handleNrdDebugModeChange,
+		handleNrdMaxAccumulatedFrameNumChange,
+		handleNrdMaxBlurRadiusChange,
+		handleNrdPrepassBlurRadiusChange,
+		handleNrdAntiFireflyChange,
 		handleDenoiserStrategyChange,
 		handleFilterStrengthChange,
 		handleEdgeAtrousIterationsChange,
@@ -299,7 +306,7 @@ const PathTracerTab = () => {
 
 			<ControlGroup name="Path Tracer" defaultOpen={true}>
 				<Row>
-					<Switch label={"Enable"} checked={enablePathTracer} onCheckedChange={handlePathTracerChange} />
+					<Switch label={"Enable"} checked={pathTracerActive} onCheckedChange={handlePathTracerChange} />
 				</Row>
 				<Row>
 					<Switch label={"Interaction Mode"} checked={interactionModeEnabled} onCheckedChange={handleInteractionModeEnabledChange} />
@@ -553,9 +560,55 @@ const PathTracerTab = () => {
 							<SelectItem value="none">None</SelectItem>
 							<SelectItem value="edgeaware">EdgeAware</SelectItem>
 							<SelectItem value="asvgf">ASVGF</SelectItem>
+							<SelectItem value="nrd">NRD (ReBLUR)</SelectItem>
+							<SelectItem value="oidn">OIDN (AI)</SelectItem>
 						</SelectContent>
 					</Select>
 				</Row>
+
+				{denoiserStrategy === 'nrd' && ( <>
+					<Row>
+						<Select value={nrdQualityPreset} onValueChange={handleNrdQualityPresetChange}>
+							<span className="opacity-50 text-xs truncate">Quality Preset</span>
+							<SelectTrigger className="max-w-32 h-5 rounded-full" >
+								<SelectValue placeholder="Select preset" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="low">Low</SelectItem>
+								<SelectItem value="medium">Medium</SelectItem>
+								<SelectItem value="high">High</SelectItem>
+							</SelectContent>
+						</Select>
+					</Row>
+					<Row>
+						<Slider label={"Max History"} min={1} max={63} step={1} value={[ nrdMaxAccumulatedFrameNum ]} onValueChange={handleNrdMaxAccumulatedFrameNumChange} />
+					</Row>
+					<Row>
+						<Slider label={"Blur Radius"} min={0} max={60} step={1} value={[ nrdMaxBlurRadius ]} onValueChange={handleNrdMaxBlurRadiusChange} />
+					</Row>
+					<Row>
+						<Slider label={"Pre-pass Radius"} min={0} max={60} step={1} value={[ nrdPrepassBlurRadius ]} onValueChange={handleNrdPrepassBlurRadiusChange} />
+					</Row>
+					<Row>
+						<Switch label={"Anti-Firefly"} checked={nrdAntiFirefly} onCheckedChange={handleNrdAntiFireflyChange}/>
+					</Row>
+					<Row>
+						<Select value={nrdDebugMode.toString()} onValueChange={handleNrdDebugModeChange}>
+							<span className="opacity-50 text-xs truncate">Debug View</span>
+							<SelectTrigger className="max-w-32 h-5 rounded-full" >
+								<SelectValue placeholder="Select view" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="0">Beauty</SelectItem>
+								<SelectItem value="1">History Length</SelectItem>
+								<SelectItem value="2">Hit Distance</SelectItem>
+								<SelectItem value="3">Roughness</SelectItem>
+								<SelectItem value="4">Fast History</SelectItem>
+								<SelectItem value="5">Disocclusion</SelectItem>
+							</SelectContent>
+						</Select>
+					</Row>
+				</> )}
 
 				{denoiserStrategy === 'edgeaware' && ( <>
 					<Row>
@@ -617,11 +670,12 @@ const PathTracerTab = () => {
 
 				{/* Independent OIDN Control - Placed after real-time denoiser controls */}
 				<Row>
-					<Switch label={"AI Denoising (OIDN)"} checked={enableOIDN} onCheckedChange={handleEnableOIDNChange} />
+					<Switch label={"Final Denoise (OIDN)"} checked={enableOIDN} onCheckedChange={handleEnableOIDNChange} />
 				</Row>
 
-				{/* OIDN Quality Controls - Independent of real-time denoiser selection */}
-				{enableOIDN && ( <>
+				{/* Quality applies to both jobs: the final pass, and which cheap model the live
+				    refreshes use — so it shows whenever OIDN is in use either way. */}
+				{( enableOIDN || denoiserStrategy === 'oidn' ) && ( <>
 					<Row>
 						<Select value={oidnQuality} onValueChange={handleOidnQualityChange}>
 							<span className="opacity-50 text-xs truncate">OIDN Quality</span>
@@ -640,38 +694,7 @@ const PathTracerTab = () => {
 
 				<Separator />
 
-				{/* AI Upscaler Control */}
-				<Row>
-					<Switch label={"AI Upscaler"} checked={enableUpscaler} onCheckedChange={handleEnableUpscalerChange} />
-				</Row>
-
-				{enableUpscaler && ( <>
-					<Row>
-						<Select value={upscalerScale.toString()} onValueChange={handleUpscalerScaleChange}>
-							<span className="opacity-50 text-xs truncate">Scale Factor</span>
-							<SelectTrigger className="max-w-24 h-5 rounded-full" >
-								<SelectValue placeholder="Select scale" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="2">2x</SelectItem>
-								<SelectItem value="4">4x</SelectItem>
-							</SelectContent>
-						</Select>
-					</Row>
-					<Row>
-						<Select value={upscalerQuality} onValueChange={handleUpscalerQualityChange}>
-							<span className="opacity-50 text-xs truncate">Quality</span>
-							<SelectTrigger className="max-w-32 h-5 rounded-full" >
-								<SelectValue placeholder="Select quality" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="fast">Fast</SelectItem>
-								<SelectItem value="balanced">Balanced</SelectItem>
-								<SelectItem value="quality">Quality</SelectItem>
-							</SelectContent>
-						</Select>
-					</Row>
-				</> )}
+				<NeuralPostControls />
 			</ControlGroup>
 
 			<ControlGroup name="Advanced">
@@ -688,7 +711,7 @@ const PathTracerTab = () => {
 						</SelectContent>
 					</Select>
 				</Row>
-				{enablePathTracer && (
+				{pathTracerActive && (
 					<Row>
 						<Switch label={"Accumulation"} checked={enableAccumulation} onCheckedChange={handleAccumulationChange} />
 					</Row>
@@ -711,7 +734,7 @@ const PathTracerTab = () => {
 				) : null}>
 					<Switch label={"Adaptive Sampling"} checked={useAdaptiveSampling} onCheckedChange={handleUseAdaptiveSamplingChange} />
 				</Row>
-				{enablePathTracer && ( <>
+				{pathTracerActive && ( <>
 					<Separator />
 					<Row>
 						<Select value={debugMode.toString()} onValueChange={handleDebugModeChange}>

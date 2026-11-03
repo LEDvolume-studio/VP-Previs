@@ -58,6 +58,7 @@ const ProjectManagerDialog = () => {
 					<DialogDescription>Projects autosave in this browser. Export a manifest for backup or transfer.</DialogDescription>
 				</DialogHeader>
 				<div className="flex gap-2">
+					<a href="/admin/student-presets/" className="inline-flex items-center rounded-md border px-3 text-sm">Student presets</a>
 					<Button size="sm" disabled={busy} onClick={createProject}><Plus size={14} className="mr-1" />New</Button>
 					<Button size="sm" variant="outline" disabled={busy} onClick={() => run( () => projectSession.importProject() )}><Upload size={14} className="mr-1" />Import</Button>
 				</div>

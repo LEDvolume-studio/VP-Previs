@@ -1,9 +1,12 @@
 import debugModelsData from './DebugModels.json';
 
 // Re-export engine constants for backward compatibility
-import { ENGINE_DEFAULTS } from 'rayzee';
+import { ENGINE_DEFAULTS, NRD_DEFAULTS } from 'rayzee';
 export {
 	ASVGF_QUALITY_PRESETS,
+	NRD_QUALITY_PRESETS,
+	NRD_DEFAULTS,
+	NRD_PRESET_KEYS,
 	CAMERA_RANGES,
 	SKY_PRESETS,
 	CAMERA_PRESETS,
@@ -25,6 +28,7 @@ export const GLTF_SAMPLE_ASSETS_BASE = 'https://cdn.jsdelivr.net/gh/KhronosGroup
 export const LED_METADATA_VERSION = 1;
 export const WELCOME_PROJECT_CATALOG_ID = 'model-studio-one';
 const LOCAL_MODELS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models`;
+const CHARACTER_ASSETS_BASE_URL = `${import.meta.env.BASE_URL || '/'}characters`;
 const LED_ASSETS_BASE_URL = `${import.meta.env.BASE_URL || '/'}models/led`;
 
 // Local, committed LED assets. Physical size and logical canvas size are deliberately
@@ -83,16 +87,30 @@ export const LED_MODEL_FILES = [
 // DEFAULT_STATE = engine defaults + UI-only keys
 export const DEFAULT_STATE = {
 	...ENGINE_DEFAULTS,
+	// The app turns the final denoise on out of the box — see INTERACTIVE_RENDER_CONFIG. The engine
+	// default stays off so an embedder is not made to fetch OIDN's weights it never asked for.
+	enableOIDN: true,
 	// UI-only keys (not needed by the engine)
 	// Retained for UI compatibility. Project creation uses the stable catalog ID
 	// below rather than this array position, which can change as assets are added.
 	model: 0,
 	environment: 'aristea_wreck_puresky',
-	aspectRatioPreset: '1:1',
+	aspectRatioPreset: '16:9',
+	canvasWidth: 512,
+	canvasHeight: 288,
 	orientation: 'landscape',
 	finalRenderResolution: 2048,
 	originalPixelRatio: window.devicePixelRatio / 2,
 	zoomToCursor: true,
+	dollyZoom: false,
+	// The application opens in the fast raster renderer. The standalone engine keeps
+	// its own path-tracing default for embedders.
+	enablePathTracer: false,
+	// NRD sliders mirror the engine's ReblurSettings defaults (preset 'medium').
+	nrdMaxAccumulatedFrameNum: NRD_DEFAULTS.maxAccumulatedFrameNum,
+	nrdMaxBlurRadius: NRD_DEFAULTS.maxBlurRadius,
+	nrdPrepassBlurRadius: NRD_DEFAULTS.prepassBlurRadius,
+	nrdAntiFirefly: NRD_DEFAULTS.enableAntiFirefly,
 };
 
 const stableCatalogId = ( prefix, name ) => `${prefix}-${name.toLowerCase()
@@ -131,7 +149,7 @@ export const MODEL_FILES = [
 	{ name: "Helmet", 				url: `${ASSETS_BASE_URL}/models/helmet.glb`, preview: `${ASSETS_BASE_URL}/models/helmet.png` },
 	{ name: "Jiotto Caspita F1", 	url: `${ASSETS_BASE_URL}/models/jiotto_caspita_f1_road_car_1989_by_alex.ka.glb`, preview: `${ASSETS_BASE_URL}/models/jiotto_caspita_f1_road_car_1989_by_alex.ka.png` },
 	{ name: "Lemon", 				url: `${ASSETS_BASE_URL}/models/lemon.glb`, preview: `${ASSETS_BASE_URL}/models/lemon.png` },
-	{ name: "Mercedes Mayback", 	url: `${ASSETS_BASE_URL}/models/mercedesmayback.glb`, preview: `${ASSETS_BASE_URL}/models/mercedesmayback.png` },
+	{ name: "Mercedes Mayback", 	url: `${LOCAL_MODELS_BASE_URL}/mercedesmayback.glb`, preview: `${LOCAL_MODELS_BASE_URL}/mercedesmayback.png` },
 	{ name: "Model 3", 				url: `${ASSETS_BASE_URL}/models/model3.glb`, preview: `${ASSETS_BASE_URL}/models/model3.png` },
 	{ name: "Modern Bathroom", 		url: `${ASSETS_BASE_URL}/models/modernbathroom.glb`, preview: `${ASSETS_BASE_URL}/models/modernbathroom.png` },
 	{ name: "Old Stool", 			url: `${ASSETS_BASE_URL}/models/old_stool.glb`, preview: `${ASSETS_BASE_URL}/models/old_stool.png` },
@@ -148,6 +166,23 @@ export const MODEL_FILES = [
 	{ name: "Rolex Oyster", 		url: `${ASSETS_BASE_URL}/models/watch-rolex-oyster-perpetual.glb`, preview: `${ASSETS_BASE_URL}/models/watch-rolex-oyster-perpetual.png` },
 	{ name: "Suzzane", 				url: `${ASSETS_BASE_URL}/models/suzzane.glb`, preview: `${ASSETS_BASE_URL}/models/suzzane.png` },
 	{ name: "Laser Flashlight", 	url: `${ASSETS_BASE_URL}/models/zenitco_klesch-2p__laser_flashlight.glb`, preview: `${ASSETS_BASE_URL}/models/zenitco_klesch-2p__laser_flashlight.png` },
+	{
+		id: 'rigged-mannequin-v1',
+		name: 'Rigged Human Mannequin',
+		url: `${CHARACTER_ASSETS_BASE_URL}/mannequin/mannequin-presets.glb`,
+		preview: `${CHARACTER_ASSETS_BASE_URL}/mannequin/standing.png`,
+		category: [ 'People', 'Mannequin' ],
+		tags: [ 'human', 'rigged', 'standing', 'sitting', 'poses' ],
+	},
+	{
+		id: 'kb3d-mid-suv-v1',
+		name: 'KB3D Mid SUV',
+		url: `${import.meta.env.BASE_URL || '/'}vehicles/mid-suv/mid-suv.glb`,
+		preview: `${import.meta.env.BASE_URL || '/'}vehicles/mid-suv/closed.png`,
+		category: [ 'Vehicles', 'Cars' ],
+		tags: [ 'car', 'suv', 'doors', 'poses' ],
+	},
+
 	...LED_MODEL_FILES,
 ].map( item => ( {
 	...item,
@@ -302,7 +337,7 @@ export const isPanorama = projection => projection === 'equirectangular';
 
 /**
  * Output dimensions for a render. Equirectangular panoramas are locked to 2:1 with the
- * resolution as the width; everything else follows the aspect-ratio + orientation presets.
+ * resolution as the width; photographic output stays 16:9 with alternate framing overlaid.
  */
 export function computeOutputDimensions( state, resolution ) {
 
@@ -312,7 +347,8 @@ export function computeOutputDimensions( state, resolution ) {
 
 	}
 
-	return computeCanvasDimensions( resolution, state?.aspectRatioPreset, state?.orientation );
+	// Photographic viewports have a fixed gate; alternate ratios are overlays.
+	return computeCanvasDimensions( resolution, '16:9', 'landscape' );
 
 }
 

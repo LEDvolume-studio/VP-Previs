@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import PlateDownloadStatus from '../../plates/PlateDownloadStatus.jsx';
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { Pause, Play, RotateCcw, Trash2, Upload, Video } from 'lucide-react';
 import { useStore } from '@/store';
 import { getApp } from '@/lib/appProxy';
@@ -10,6 +11,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { projectSession } from '@/services/projects/ProjectSession';
 import { useToast } from '@/hooks/use-toast';
+
+const PlateLibraryDialog = lazy( () => import( '../../plates/PlateLibraryDialog.jsx' ) );
 
 const formatTime = seconds => {
 
@@ -235,7 +238,7 @@ const LEDTab = () => {
 	const selectedObject = useStore( state => state.selectedObject );
 	const { toast } = useToast();
 	const [ , setRevision ] = useState( 0 );
-	const [ choosing, setChoosing ] = useState( false );
+	const [ choosing, setChoosing ] = useState( false ), [ showPlateLibrary, setShowPlateLibrary ] = useState( false );
 	const [ experimentalLivePathTracing, setExperimentalLivePathTracing ] = useState( () => LEDVideoManager.experimentalLivePathTracing );
 	const ledRoot = useMemo( () => resolveLEDAssetRoot( selectedObject ), [ selectedObject ] );
 
@@ -292,6 +295,15 @@ const LEDTab = () => {
 			</header>
 
 			<section className="space-y-3">
+				<Button className="w-full" size="sm" onClick={() => setShowPlateLibrary( true )}>Select Driving Plates</Button>
+				<PlateDownloadStatus onOpen={() => setShowPlateLibrary( true )}/>
+				{showPlateLibrary && <Suspense fallback={null}><PlateLibraryDialog onClose={() => setShowPlateLibrary( false )} onSelect={async manifest => {
+
+					const { getAdminPresetService } = await import( '@/services/presets/AdminPresetService.js' );
+					const plates = getAdminPresetService().plates;
+					await plates.refresh(); await plates.run( () => plates.bind( manifest.id, ledRoot.uuid ) ); setShowPlateLibrary( false );
+
+				}}/></Suspense>}
 				<div className="grid grid-cols-2 gap-2">
 					<Button size="sm" disabled={choosing} onClick={chooseFile}>
 						<Upload size={13} className="mr-1" />{snapshot.status === 'missing' ? 'Reconnect video' : snapshot.filename ? 'Replace video' : 'Choose video'}

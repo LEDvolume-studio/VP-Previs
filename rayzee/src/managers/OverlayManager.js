@@ -179,6 +179,10 @@ export class OverlayManager {
 
 			source.addEventListener( 'tileProgress', ( e ) => {
 
+				// A cadence denoise of the still-accumulating preview runs many times a second and
+				// is a single tile — showing the border for those just strobes it.
+				if ( e.continuous ) return;
+
 				if ( e.tile ) {
 
 					tileHelper.setRenderSize( e.imageWidth, e.imageHeight );
@@ -273,6 +277,15 @@ export class OverlayManager {
 	getHelper( name ) {
 
 		return this._helpers.get( name ) ?? null;
+
+	}
+
+	/** Switch every camera-dependent scene overlay to the active viewport camera. */
+	setCamera( camera ) {
+
+		if ( ! camera || this.camera === camera ) return;
+		this.camera = camera;
+		this._helpers.get( 'outline' )?.setCamera?.( camera );
 
 	}
 

@@ -1,0 +1,19 @@
+{
+  "name": "rayzee-student-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test ../tests/integration/previs/backend*.mjs",
+    "dev": "node scripts/local-cli.mjs dev",
+    "migrate:local": "node scripts/local-cli.mjs migrate",
+    "check": "node scripts/local-cli.mjs check",
+    "check:pages": "node scripts/local-cli.mjs pages"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "miniflare": "4.20260730.0",
+    "wrangler": "4.151.3"
+  }
+}

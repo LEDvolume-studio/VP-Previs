@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { SENSOR_PRESETS } from '@/utils/cameraSensor.js';
 
 // Stub browser APIs that Zustand/store.js may reference. localStorage is required: without
 // it the store import throws and the `catch { store = null }` below silently skips every test.
@@ -104,5 +105,189 @@ describe( 'bounce-loop settings unwrap the Slider array', () => {
 		} );
 
 	}
+
+} );
+
+describe( 'NRD denoiser handlers', () => {
+
+	// The preset handler reads back what the engine resolved rather than restating the table.
+	const mockApp = ( nrdSettings = {} ) => ( {
+		denoisingManager: {
+			setNRDParams: vi.fn(),
+			setNRDDebugMode: vi.fn(),
+			applyNRDPreset: vi.fn(),
+			setStrategy: vi.fn(),
+		},
+		stages: { nrd: { settings: nrdSettings } },
+		reset: vi.fn(),
+		settings: { set: vi.fn() },
+	} );
+
+	// Slider hands its callbacks a [value]; the engine setters compare and store raw numbers, so an
+	// array reaches the shader as NaN or a string.
+	const SLIDERS = [
+		[ 'handleNrdMaxAccumulatedFrameNumChange', 'maxAccumulatedFrameNum', 'nrdMaxAccumulatedFrameNum', 24 ],
+		[ 'handleNrdMaxBlurRadiusChange', 'maxBlurRadius', 'nrdMaxBlurRadius', 12 ],
+		[ 'handleNrdPrepassBlurRadiusChange', 'prepassBlurRadius', 'nrdPrepassBlurRadius', 40 ],
+	];
+
+	for ( const [ handler, engineKey, stateKey, value ] of SLIDERS ) {
+
+		it( `${handler} forwards a number, not an array`, async () => {
+
+			if ( ! store ) return;
+
+			const app = mockApp();
+			( await import( '@/lib/appProxy.js' ) ).__setMockApp( app );
+
+			store.usePathTracerStore.getState()[ handler ]( [ value ] );
+
+			expect( app.denoisingManager.setNRDParams ).toHaveBeenCalledWith( { [ engineKey ]: value } );
+			expect( store.usePathTracerStore.getState()[ stateKey ] ).toBe( value );
+
+		} );
+
+	}
+
+	it( 'the quality preset rewrites the slider state so the UI matches the engine', async () => {
+
+		if ( ! store ) return;
+
+		const { NRD_QUALITY_PRESETS, NRD_DEFAULTS } = await import( '@/Constants' );
+		const resolved = { ...NRD_DEFAULTS, ...NRD_QUALITY_PRESETS.high };
+		const app = mockApp( resolved );
+		( await import( '@/lib/appProxy.js' ) ).__setMockApp( app );
+
+		store.usePathTracerStore.getState().handleNrdQualityPresetChange( 'high' );
+
+		expect( app.denoisingManager.applyNRDPreset ).toHaveBeenCalledWith( 'high' );
+		const state = store.usePathTracerStore.getState();
+		expect( state.nrdQualityPreset ).toBe( 'high' );
+		expect( state.nrdMaxBlurRadius ).toBe( resolved.maxBlurRadius );
+		expect( state.nrdMaxAccumulatedFrameNum ).toBe( resolved.maxAccumulatedFrameNum );
+		// 'medium' states no deltas, so this only reads right if the engine resolved the defaults.
+		expect( state.nrdAntiFirefly ).toBe( resolved.enableAntiFirefly );
+
+	} );
+
+	it( 'the strategy switch passes the NRD preset, not the ASVGF one', async () => {
+
+		if ( ! store ) return;
+
+		const app = mockApp();
+		( await import( '@/lib/appProxy.js' ) ).__setMockApp( app );
+
+		store.usePathTracerStore.setState( { nrdQualityPreset: 'low', asvgfQualityPreset: 'high' } );
+		store.usePathTracerStore.getState().handleDenoiserStrategyChange( 'nrd' );
+
+		expect( app.denoisingManager.setStrategy ).toHaveBeenCalledWith( 'nrd', 'low' );
+
+		store.usePathTracerStore.getState().handleDenoiserStrategyChange( 'asvgf' );
+		expect( app.denoisingManager.setStrategy ).toHaveBeenLastCalledWith( 'asvgf', 'high' );
+
+	} );
+
+	it( 'the debug mode reaches the engine as an int', async () => {
+
+		if ( ! store ) return;
+
+		const app = mockApp();
+		( await import( '@/lib/appProxy.js' ) ).__setMockApp( app );
+
+		store.usePathTracerStore.getState().handleNrdDebugModeChange( '3' );
+
+		expect( app.denoisingManager.setNRDDebugMode ).toHaveBeenCalledWith( 3 );
+		expect( store.usePathTracerStore.getState().nrdDebugMode ).toBe( 3 );
+
+	} );
+
+} );
+
+describe( 'camera lens controls', () => {
+
+	const createCameraApp = async () => {
+
+		const { PerspectiveCamera, Vector3 } = await import( 'three' );
+		const camera = new PerspectiveCamera( 50, 16 / 9, 0.01, 1000 );
+		camera.position.set( 0, 0, 5 );
+		const settings = { set: vi.fn() };
+		return {
+			camera,
+			settings,
+			reset: vi.fn(),
+			cameraManager: {
+				active: camera,
+				cameras: [ camera ],
+				currentCameraIndex: 0,
+				controls: { target: new Vector3(), update: vi.fn() },
+			},
+		};
+
+	};
+
+	it( 'derives the physical focal length when FOV changes', async () => {
+
+		const app = await createCameraApp();
+		const proxy = await import( '@/lib/appProxy.js' );
+		proxy.__setMockApp( app );
+
+		store.useCameraStore.getState().handleFovChange( [ 60 ] );
+
+		expect( app.camera.fov ).toBe( 60 );
+		expect( app.camera.position.z ).toBe( 5 );
+		expect( store.useCameraStore.getState().focalLength ).toBeCloseTo( app.camera.getFocalLength() );
+		expect( app.settings.set ).toHaveBeenCalledWith( 'focalLength', app.camera.getFocalLength() );
+
+	} );
+
+	it( 'updates the camera projection and FOV when focal length changes', async () => {
+
+		const app = await createCameraApp();
+		const proxy = await import( '@/lib/appProxy.js' );
+		proxy.__setMockApp( app );
+
+		store.useCameraStore.getState().handleFocalLengthChange( [ 85 ] );
+
+		expect( app.camera.getFocalLength() ).toBeCloseTo( 85 );
+		expect( app.camera.position.z ).toBe( 5 );
+		expect( store.useCameraStore.getState().fov ).toBeCloseTo( app.camera.fov );
+		expect( app.settings.set.mock.calls.at( - 1 )[ 0 ] ).toBe( 'focalLength' );
+		expect( app.settings.set.mock.calls.at( - 1 )[ 1 ] ).toBeCloseTo( 85 );
+
+	} );
+
+	it( 'moves the camera to preserve framing only when Dolly Zoom is enabled', async () => {
+
+		const app = await createCameraApp();
+		const proxy = await import( '@/lib/appProxy.js' );
+		proxy.__setMockApp( app );
+		store.useCameraStore.setState( { dollyZoom: true } );
+
+		store.useCameraStore.getState().handleFovChange( [ 60 ] );
+
+		expect( app.camera.position.z ).toBeLessThan( 5 );
+		store.useCameraStore.setState( { dollyZoom: false } );
+
+	} );
+
+	it( 'changes sensor size without changing the physical focal length', async () => {
+
+		const app = await createCameraApp();
+		const proxy = await import( '@/lib/appProxy.js' );
+		proxy.__setMockApp( app );
+		const oldFov = app.camera.fov;
+		const focalLength = app.camera.getFocalLength();
+		store.useCameraStore.setState( { focalLength } );
+
+		store.useCameraStore.getState().handleSensorPresetChange( 'micro-four-thirds' );
+
+		expect( app.camera.filmGauge ).toBeCloseTo( SENSOR_PRESETS[ 'micro-four-thirds' ].width );
+		expect( app.camera.getFocalLength() ).toBeCloseTo( focalLength );
+		expect( app.camera.fov ).toBeLessThan( oldFov );
+		expect( store.useCameraStore.getState().sensorPreset ).toBe( 'micro-four-thirds' );
+		expect( app.settings.set ).toHaveBeenLastCalledWith( 'focalLength', focalLength, { reset: false } );
+		expect( app.reset ).toHaveBeenCalledOnce();
+
+	} );
 
 } );

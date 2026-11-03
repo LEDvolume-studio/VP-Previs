@@ -39,6 +39,11 @@ export { Logger, createLogger, fmt, LOG_LEVELS } from './utils/Logger.js';
 export {
 	ENGINE_DEFAULTS,
 	ASVGF_QUALITY_PRESETS,
+	NRD_DEFAULTS,
+	NRD_QUALITY_PRESETS,
+	NRD_PRESET_KEYS,
+	NRD_HIT_DIST_A,
+	NRD_HIT_DIST_B,
 	CAMERA_PRESETS,
 	CAMERA_RANGES,
 	SKY_PRESETS,
@@ -64,9 +69,13 @@ export { GoboManager } from './managers/GoboManager.js';
 export { IESManager } from './managers/IESManager.js';
 export { DenoisingManager } from './managers/DenoisingManager.js';
 export { OverlayManager } from './managers/OverlayManager.js';
+export { EditorViewManager, EDITOR_VIEW_MODES, EDITOR_VIEW_STYLES } from './managers/EditorViewManager.js';
 
 // VRAM accounting
 export { VRAMTracker, bufferBytes, textureBytes } from './Processor/VRAMTracker.js';
+export {
+	MemoryLedger, estimateSceneBytes, probeAddressSpace, SAFE_SCENE_BYTES, MAX_SCENE_BYTES,
+} from './Processor/HostMemory.js';
 
 // Pipeline infrastructure (for advanced consumers building custom stages)
 export { RenderPipeline } from './Pipeline/RenderPipeline.js';
@@ -89,3 +98,9 @@ export { VideoRenderManager } from './managers/VideoRenderManager.js';
 
 // Interaction
 export { InteractionManager } from './managers/InteractionManager.js';
+
+// DLSS neural passes. The app drives these through `denoisingManager` — what is exported here is
+// the offline entry point (`renderUpscaled`, used by the regression bench) plus the two contracts a
+// host needs to build UI against.
+export { renderUpscaled, SR_SCALE, SR_MAX_INPUT } from './dlss/DLSSSuperRes.js';
+export { DLSS_NR_DEFAULTS, DLSS_NR_RANGES, DLSS_NR_MAX_PIXELS } from './dlss/DLSSNeural.js';

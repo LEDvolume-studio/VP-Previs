@@ -39,7 +39,7 @@ const AutoFocusOverlay = ( { containerRef } ) => {
 	};
 
 	return (
-		<div className="absolute inset-0 pointer-events-none z-10">
+		<div className="absolute inset-0 pointer-events-none z-20">
 			<div
 				className="absolute pointer-events-auto cursor-grab active:cursor-grabbing"
 				style={{

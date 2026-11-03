@@ -1,4 +1,7 @@
 import path from "path";
+import { studentOfflinePlugin } from './build/studentOfflinePlugin.js';
+import { localStudentBackend } from './build/localStudentBackend.js';
+import { plateCataloguePlugin } from './build/plateCataloguePlugin.js';
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
@@ -29,8 +32,24 @@ export default defineConfig( {
 		},
 		// port: 5174
 	},
+	build: {
+		rollupOptions: { input: {
+			index: path.resolve( __dirname, 'index.html' ),
+			student: path.resolve( __dirname, 'student/index.html' ),
+			studentWorkbench: path.resolve( __dirname, 'student/workbench/index.html' ),
+			studentDiagnostic: path.resolve( __dirname, 'student/diagnostic/index.html' ),
+			studentScene: path.resolve( __dirname, 'student/scene/index.html' ),
+			studentPresetPublisher: path.resolve( __dirname, 'admin/student-presets/index.html' ),
+			studentProjectReview: path.resolve( __dirname, 'admin/users/review/index.html' ),
+			studentUsers: path.resolve( __dirname, 'admin/users/index.html' ),
+			drivingPlateIntake: path.resolve( __dirname, 'admin/driving-plates/index.html' ),
+		} },
+	},
 	assetsInclude: [ "**/*.hdr" ],
 	plugins: [
+		localStudentBackend( __dirname ),
+		plateCataloguePlugin( path.resolve( __dirname, '../.local-runtime/plate-catalogue' ) ),
+		studentOfflinePlugin(),
 		// Strip onnxruntime WASM files from build output — loaded from CDN at runtime.
 		// Prevents Cloudflare Pages 25MB file size limit violation.
 		{
@@ -70,6 +89,7 @@ export default defineConfig( {
 	// Only define specific environment variables that are needed
 	// Avoid exposing all of process.env for security reasons
 	define: {
+		'import.meta.env.PREVIS_FIXTURE_ASSETS': 'true',
 		'process.env.NODE_ENV': JSON.stringify( process.env.NODE_ENV ),
 		'__APP_VERSION__': JSON.stringify( process.env.VITE_APP_VERSION || enginePkg.version ),
 	}

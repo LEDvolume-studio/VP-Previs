@@ -13,7 +13,7 @@
 
 import {
 	Fn, vec3, vec4, float, int,
-	If, normalize, mat3, mix, sin, cos, cross, dot,
+	If, normalize, mat3, mix, sin, cos, cross, dot, max, select,
 } from 'three/tsl';
 
 import { Ray } from './Struct.js';
@@ -85,11 +85,18 @@ export const cameraRayDirection = Fn( ( [
 
 } );
 
+// A perspective camera clips on a plane; a panorama clips on a sphere.
+export const cameraClipDistance = ( direction, clipStart, cameraWorldMatrix, cameraProjection ) => select(
+	cameraProjection.equal( int( 1 ) ), clipStart,
+	clipStart.div( max( dot( direction, normalize( vec3( cameraWorldMatrix[ 2 ] ) ) ).negate(), 1e-4 ) )
+);
+
 export const generateRayFromCamera = Fn( ( [
 	uv01, rngState,
 	cameraWorldMatrix, cameraProjectionMatrixInverse,
 	cameraProjection, panoLonRange, panoLatRange, panoLevelHorizon,
-	enableDOF, focalLength, aperture, focusDistance, sceneScale, apertureScale, anamorphicRatio
+	enableDOF, focalLength, aperture, focusDistance, sceneScale, apertureScale, anamorphicRatio,
+	unitsPerMetre = float( 1 ), dofMode = int( 2 ), dofBlur = float( 0.05 )
 ] ) => {
 
 	const rayOriginWorld = vec3( cameraWorldMatrix[ 3 ] ).toVar();
@@ -102,10 +109,17 @@ export const generateRayFromCamera = Fn( ( [
 	const resultOrigin = rayOriginWorld.toVar();
 	const resultDirection = rayDirectionWorld.toVar();
 
-	If( enableDOF.and( focalLength.greaterThan( 0.0 ) ).and( aperture.lessThan( 64.0 ) ).and( focusDistance.greaterThan( 0.001 ) ), () => {
+	const lookMode = dofMode.equal( int( 1 ) );
+	const legacyMode = dofMode.equal( int( 2 ) );
+	const lensOpen = lookMode.and( dofBlur.greaterThan( 0.0 ) ).or( lookMode.not().and( focalLength.greaterThan( 0.0 ) ).and( aperture.lessThan( 64.0 ) ) );
+	If( enableDOF.and( lensOpen ).and( focusDistance.greaterThan( 0.001 ) ), () => {
 
 		const effectiveAperture = focalLength.div( aperture );
-		const apertureRadius = effectiveAperture.mul( 0.001 ).mul( sceneScale ).mul( apertureScale );
+		const legacyRadius = effectiveAperture.mul( 0.001 ).mul( sceneScale ).mul( apertureScale );
+		const halfViewHeight = select( cameraProjection.equal( int( 1 ) ), panoLatRange.y.sub( panoLatRange.x ).mul( 0.5 ), cameraProjectionMatrixInverse[ 1 ].y );
+		const physicalRadius = focalLength.div( max( aperture, 1e-4 ).mul( 2 ) ).mul( 0.001 ).mul( unitsPerMetre ).mul( apertureScale );
+		const apertureRadius = select( legacyMode, legacyRadius,
+			select( lookMode, dofBlur.mul( focusDistance ).mul( halfViewHeight ), physicalRadius ) );
 
 		const randomPoint = RandomPointInCircle( rngState );
 		// Anamorphic squeeze — stretch horizontally for oval bokeh
@@ -113,6 +127,7 @@ export const generateRayFromCamera = Fn( ( [
 		const lensY = randomPoint.y;
 
 		const lensOffset = vec3( 0.0 ).toVar();
+		const focusAlongRay = focusDistance.toVar();
 
 		If( cameraProjection.equal( int( 1 ) ), () => {
 
@@ -125,11 +140,16 @@ export const generateRayFromCamera = Fn( ( [
 			const camRight = normalize( vec3( cameraWorldMatrix[ 0 ] ) );
 			const camUp = normalize( vec3( cameraWorldMatrix[ 1 ] ) );
 			lensOffset.assign( camRight.mul( lensX ).add( camUp.mul( lensY ) ) );
+			If( legacyMode.not(), () => {
+
+				focusAlongRay.assign( focusDistance.div( max( dot( rayDirectionWorld, normalize( vec3( cameraWorldMatrix[ 2 ] ) ) ).negate(), 1e-4 ) ) );
+
+			} );
 
 		} );
 
 		resultOrigin.assign( rayOriginWorld.add( lensOffset.mul( apertureRadius ) ) );
-		resultDirection.assign( normalize( rayOriginWorld.add( rayDirectionWorld.mul( focusDistance ) ).sub( resultOrigin ) ) );
+		resultDirection.assign( normalize( rayOriginWorld.add( rayDirectionWorld.mul( focusAlongRay ) ).sub( resultOrigin ) ) );
 
 	} );
 

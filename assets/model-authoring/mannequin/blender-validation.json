@@ -1,0 +1,58 @@
+{
+  "rig": "Rigged Human Mannequin man (Rigify)",
+  "boneCount": 400,
+  "deformBoneCount": 69,
+  "actions": [
+    {
+      "name": "Rigged Human Mannequin man (Rigify)Action",
+      "frames": [
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "mesh": {
+    "name": "Rigged Human Mannequin man ",
+    "polygons": 1387,
+    "modifiers": [
+      {
+        "type": "MIRROR",
+        "viewport": true,
+        "render": true,
+        "levels": null,
+        "render_levels": null
+      },
+      {
+        "type": "ARMATURE",
+        "viewport": true,
+        "render": true,
+        "levels": null,
+        "render_levels": null
+      },
+      {
+        "type": "SUBSURF",
+        "viewport": true,
+        "render": true,
+        "levels": 1,
+        "render_levels": 2
+      }
+    ]
+  },
+  "materials": [
+    {
+      "name": "Material",
+      "nodes": [
+        "BSDF_PRINCIPLED",
+        "OUTPUT_MATERIAL"
+      ]
+    },
+    {
+      "name": "Material.001",
+      "nodes": [
+        "BSDF_PRINCIPLED",
+        "OUTPUT_MATERIAL"
+      ]
+    }
+  ],
+  "images": []
+}

@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { BufferAttribute } from 'three';
 import { PathTracerStage } from '@/core/Stages/PathTracerStage.js';
 
 // The stage needs a WebGPU renderer to construct, but the completion-threshold methods only
@@ -60,6 +61,84 @@ describe( 'PathTracerStage completion threshold', () => {
 		stage.maxSamples.value = 200;
 		stage.setRenderLimitMode( 'frames' );
 		expect( stage.completionThreshold ).toBe( 200 );
+
+	} );
+
+} );
+
+describe( 'PathTracerStage BVH uploads', () => {
+
+	const makeStage = () => ( {
+		bvhStorageAttr: new BufferAttribute( new Float32Array( 16 * 8 ), 4 ),
+		_dirtyBVHLeaves: new Set(),
+		_flushBVHEdits: PathTracerStage.prototype._flushBVHEdits,
+		_updateStorageBuffer: PathTracerStage.prototype._updateStorageBuffer,
+		updateBVHData: PathTracerStage.prototype.updateBVHData,
+	} );
+
+	it( 'uploads only the TLAS leaves a visibility edit touched', () => {
+
+		const stage = makeStage();
+		stage._dirtyBVHLeaves.add( 2 ).add( 3 );
+		stage._flushBVHEdits();
+
+		expect( stage.bvhStorageAttr.updateRanges ).toEqual( [ { start: 32, count: 32 } ] );
+
+	} );
+
+	// Regression: the range a visibility edit left pending cut the next full upload down to it,
+	// so a refit straight after a load reached the GPU as two TLAS leaves and nothing else.
+	it( 'a full upload after a visibility edit still uploads everything', () => {
+
+		const stage = makeStage();
+		stage._dirtyBVHLeaves.add( 1 );
+		stage._flushBVHEdits();
+		const version = stage.bvhStorageAttr.version;
+
+		stage.updateBVHData( new Float32Array( 16 * 8 ).fill( 1 ) );
+
+		expect( stage.bvhStorageAttr.updateRanges ).toEqual( [] );
+		expect( stage.bvhStorageAttr.version ).toBeGreaterThan( version );
+
+	} );
+
+} );
+
+describe( 'PathTracerStage material rebuild', () => {
+
+	it( 'preserves LED emissive sampling and instance data while refreshing materials', async () => {
+
+		const scene = {};
+		const emitters = new Float32Array( [ 1, 2, 3 ] );
+		const instanceTable = { placements: [ 0, 1 ] };
+		const materialData = new Float32Array( [ 4, 5 ] );
+		const sources = [ { name: 'LED video texture' } ];
+		const stage = {
+			sdfs: { rebuildMaterials: vi.fn().mockResolvedValue(), materialData, materials: [ { sources } ] },
+			materialData: { setMaterialData: vi.fn(), loadTexturesFromSdfs: vi.fn() },
+			shaderBuilder: { updateSceneTextures: vi.fn() },
+			emissiveTriangleData: emitters,
+			instanceTable,
+			updateSceneUniforms: vi.fn( () => {
+
+				stage.emissiveTriangleData = null;
+				stage.instanceTable = null;
+
+			} ),
+			updateLights: vi.fn(),
+			reset: vi.fn(),
+		};
+
+		await PathTracerStage.prototype.rebuildMaterials.call( stage, scene );
+
+		expect( stage.sdfs.rebuildMaterials ).toHaveBeenCalledWith( scene );
+		expect( stage.materialData.setMaterialData ).toHaveBeenCalledWith( materialData, [ sources ] );
+		expect( stage.materialData.loadTexturesFromSdfs ).toHaveBeenCalledOnce();
+		expect( stage.shaderBuilder.updateSceneTextures ).toHaveBeenCalledWith( stage );
+		expect( stage.updateSceneUniforms ).not.toHaveBeenCalled();
+		expect( stage.emissiveTriangleData ).toBe( emitters );
+		expect( stage.instanceTable ).toBe( instanceTable );
+		expect( stage.reset ).toHaveBeenCalledOnce();
 
 	} );
 

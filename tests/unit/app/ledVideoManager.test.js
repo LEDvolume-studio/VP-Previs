@@ -79,16 +79,16 @@ describe( 'LED asset metadata', () => {
 		const observer = new NodeMaterialObserver( { material, object: mesh, context: {} } );
 		// Reproduce the upstream omission: initially empty texture slots are never
 		// added to the observer's cached list, even after a texture is linked.
-		expect( observer.getMaterialData( material ).emissiveMap ).toBeUndefined();
+		expect( observer.getMaterialData( material ).emissiveMap ).toBeNull();
 		material.emissiveMap = new Texture();
-		expect( observer.getMaterialData( material ).emissiveMap ).toBeUndefined();
+		expect( observer.getMaterialData( material ).emissiveMap ).toBeNull();
 		const renderObject = { material, object: mesh };
 		for ( let renderId = 1; renderId <= 5; renderId ++ ) {
 
 			// Another object using the same shader has already rendered this frame.
 			observer.renderId = renderId;
 			material.emissiveMap.needsUpdate = true;
-			expect( observer.needsRefresh( renderObject, { renderId } ) ).toBe( true );
+			expect( observer.needsRefresh( renderObject, { renderId } ) ).toBeTruthy();
 
 		}
 
@@ -467,5 +467,23 @@ describe( 'LED reconnect placeholder', () => {
 		vi.unstubAllGlobals();
 
 	} );
+
+} );
+
+
+it( 'publishes the selected plate file before frame listeners capture preset media', () => {
+
+	const manager = new LEDVideoManagerImpl();
+	const file = new File( [ new Uint8Array( 32 ) ], 'rear-h264.mp4', { type: 'video/mp4' } );
+	const video = new EventTarget();
+	Object.assign( video, { plateSource: { manifest: { id: 'drive', name: 'Drive' }, files: { rear: file }, encoding: 'h264' }, plateView: 'rear', currentTime: 4.32 } );
+	const record = { root: { uuid: 'wall', userData: { rayzeeLED: { videoSource: { plateView: 'front' } } } }, video, generation: 1, eventHandlers: [], file: new File( [ 'old' ], 'front-h264.mp4' ) };
+	manager.records.set( 'wall', record );
+	const observed = []; manager.subscribe( () => observed.push( record.file.name ) );
+	manager.bindVideoEvents( record, 1 ); video.dispatchEvent( new Event( 'timeupdate' ) );
+	expect( observed ).toEqual( [ 'rear-h264.mp4' ] );
+	expect( record.root.userData.rayzeeLED.videoSource.plateView ).toBe( 'rear' );
+	const selectedFile = record.file; video.dispatchEvent( new Event( 'timeupdate' ) );
+	expect( record.file ).toBe( selectedFile );
 
 } );

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Student previs · export diagnostic</title></head>
+<body>
+<main>
+<a href="../">← Student previs</a>
+<h1>Raster export diagnostic</h1>
+<p>Engineering fixture: a hard cut at frame 125, frozen then advancing LED timecode, an audio click each second, and 50% framing bars (4:3 then 2.40:1). Proxy geometry; this is not the finished student editor.</p>
+<div class="actions"><button id="short" disabled>Export 10 seconds</button><button id="soak" disabled>Run 15 minute synthetic soak</button><button id="cancel" disabled>Cancel</button></div>
+<p id="status" role="status">Preparing WebGPU and video fixture…</p>
+<div class="preview"><canvas id="viewport" width="960" height="540"></canvas></div>
+<pre id="result"></pre>
+</main>
+<script type="module" src="/src/student/diagnostic/main.js"></script>
+</body>
+</html>

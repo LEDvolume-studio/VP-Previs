@@ -1,7 +1,12 @@
-import { EventDispatcher, PerspectiveCamera, Vector3 } from 'three';
+import { getCameraClipStart, setCameraRayClip, viewDepth } from './cameraClip.js';
+import { Euler, EventDispatcher, MathUtils, PerspectiveCamera, Vector3 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EngineEvents, } from '../EngineEvents.js';
 import { AF_DEFAULTS } from '../EngineDefaults.js';
+
+const NAVIGATION_KEYS = new Set( [ 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE' ] );
+const CAMERA_SPEED_MULTIPLIERS = [ 0.125, 0.25, 0.5, 1, 2, 4, 8, 16 ];
+const DEFAULT_CAMERA_SCALE = Object.freeze( new Vector3( 1, 1, 1 ) );
 
 /**
  * Manages camera creation, switching, auto-focus, and AF point placement.
@@ -28,6 +33,41 @@ export class CameraManager extends EventDispatcher {
 		this.controls.screenSpacePanning = true;
 		this.controls.zoomToCursor = true;
 		this.controls.saveState();
+
+		// Camera-editor navigation owns mouse gestures; OrbitControls still owns its
+		// target, reset state, limits, and programmatic updates.
+		this.controls.mouseButtons.LEFT = null;
+		this.controls.mouseButtons.MIDDLE = null;
+		this.controls.mouseButtons.RIGHT = null;
+		this.controls.enableZoom = false;
+
+		this.navigationActive = false;
+		this.cameraSpeedLevel = 1;
+		this.lookSensitivity = 0.002;
+		this.movementAcceleration = 14;
+		this.movementDeceleration = 18;
+		this._speedBoostActive = false;
+		this._navigationKeys = new Set();
+		this._pointerButtons = new Set();
+		this._navigationLastUpdate = null;
+		this._lookDistance = 5;
+		this._lookEuler = new Euler( 0, 0, 0, 'YXZ' );
+		this._move = new Vector3();
+		this._forward = new Vector3();
+		this._right = new Vector3();
+		this._up = new Vector3();
+		this._velocity = new Vector3();
+		this._targetVelocity = new Vector3();
+
+		this._handleNavigationKeyDown = this._handleNavigationKeyDown.bind( this );
+		this._handleNavigationKeyUp = this._handleNavigationKeyUp.bind( this );
+		this._handlePointerDown = this._handlePointerDown.bind( this );
+		this._handlePointerMove = this._handlePointerMove.bind( this );
+		this._handlePointerUp = this._handlePointerUp.bind( this );
+		this._handleNavigationWheel = this._handleNavigationWheel.bind( this );
+		this._handleNavigationBlur = this._handleNavigationBlur.bind( this );
+		this._preventContextMenu = event => event.preventDefault();
+		this._addNavigationListeners();
 
 		this.interactionManager = null;
 
@@ -58,6 +98,280 @@ export class CameraManager extends EventDispatcher {
 
 	}
 
+	_addNavigationListeners() {
+
+		if ( typeof window === 'undefined' || typeof document === 'undefined' ) return;
+		window.addEventListener( 'keydown', this._handleNavigationKeyDown, true );
+		window.addEventListener( 'keyup', this._handleNavigationKeyUp, true );
+		window.addEventListener( 'pointermove', this._handlePointerMove );
+		window.addEventListener( 'pointerup', this._handlePointerUp );
+		window.addEventListener( 'blur', this._handleNavigationBlur );
+		this.controls.domElement.addEventListener( 'pointerdown', this._handlePointerDown );
+		this.controls.domElement.addEventListener( 'wheel', this._handleNavigationWheel, { passive: false } );
+		this.controls.domElement.addEventListener( 'contextmenu', this._preventContextMenu );
+
+	}
+
+	_removeNavigationListeners() {
+
+		if ( typeof window === 'undefined' || typeof document === 'undefined' ) return;
+		window.removeEventListener( 'keydown', this._handleNavigationKeyDown, true );
+		window.removeEventListener( 'keyup', this._handleNavigationKeyUp, true );
+		window.removeEventListener( 'pointermove', this._handlePointerMove );
+		window.removeEventListener( 'pointerup', this._handlePointerUp );
+		window.removeEventListener( 'blur', this._handleNavigationBlur );
+		this.controls.domElement.removeEventListener( 'pointerdown', this._handlePointerDown );
+		this.controls.domElement.removeEventListener( 'wheel', this._handleNavigationWheel );
+		this.controls.domElement.removeEventListener( 'contextmenu', this._preventContextMenu );
+
+	}
+
+	_isEditableTarget( target ) {
+
+		const tagName = target?.tagName;
+		return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT'
+			|| target?.isContentEditable || target?.contentEditable === 'true';
+
+	}
+
+	_handleNavigationKeyDown( event ) {
+
+		if ( event.code === 'ShiftLeft' || event.code === 'ShiftRight' ) {
+
+			this._speedBoostActive = true;
+			return;
+
+		}
+
+		if ( ! this._pointerButtons.has( 2 ) || ! this.controls.enabled
+			|| event.ctrlKey || event.altKey || event.metaKey
+			|| this._isEditableTarget( event.target ) ) return;
+
+		if ( ! NAVIGATION_KEYS.has( event.code ) ) return;
+		this._speedBoostActive = event.shiftKey;
+		const isNewKey = ! this._navigationKeys.has( event.code );
+		this._navigationKeys.add( event.code );
+		event.preventDefault();
+		event.stopPropagation();
+		if ( isNewKey ) {
+
+			this._navigationLastUpdate = typeof performance !== 'undefined' ? performance.now() : Date.now();
+			this._notifyNavigationChange();
+
+		}
+
+	}
+
+	_handleNavigationKeyUp( event ) {
+
+		if ( event.code === 'ShiftLeft' || event.code === 'ShiftRight' ) {
+
+			this._speedBoostActive = false;
+			return;
+
+		}
+
+		if ( ! this._navigationKeys.delete( event.code ) ) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if ( this._velocity.lengthSq() > 0 ) this._notifyNavigationChange();
+
+	}
+
+	_handlePointerDown( event ) {
+
+		if ( ! this.controls.enabled || ! [ 0, 1, 2 ].includes( event.button ) ) return;
+		this._pointerButtons.add( event.button );
+		this.navigationActive = true;
+		this._navigationLastUpdate = typeof performance !== 'undefined' ? performance.now() : Date.now();
+		this._updateLookDistance();
+		this.controls.domElement.style.cursor = 'grabbing';
+		if ( event.button !== 0 ) event.preventDefault();
+
+	}
+
+	_handlePointerMove( event ) {
+
+		if ( ! this.navigationActive || ! this.controls.enabled ) return;
+		const left = this._pointerButtons.has( 0 );
+		const middle = this._pointerButtons.has( 1 );
+		const right = this._pointerButtons.has( 2 );
+		if ( ! left && ! middle && ! right ) return;
+
+		event.preventDefault();
+		if ( middle || ( left && right ) ) this._pan( event.movementX, event.movementY );
+		else if ( right ) this._lookAround( event.movementX, event.movementY );
+		else if ( left ) this._dolly( event.movementY );
+
+	}
+
+	_handlePointerUp( event ) {
+
+		this._pointerButtons.delete( event.button );
+		if ( event.button === 2 ) this._navigationKeys.clear();
+		if ( this._pointerButtons.size > 0 ) return;
+		this.navigationActive = false;
+		this._navigationKeys.clear();
+		this._speedBoostActive = false;
+		if ( this._velocity.lengthSq() > 0 ) {
+
+			this._navigationLastUpdate = typeof performance !== 'undefined' ? performance.now() : Date.now();
+			this._notifyNavigationChange();
+
+		} else {
+
+			this._navigationLastUpdate = null;
+
+		}
+
+		if ( this.controls.domElement?.style ) this.controls.domElement.style.cursor = '';
+
+	}
+
+	_handleNavigationWheel( event ) {
+
+		event.preventDefault();
+		this.adjustCameraSpeed( event.deltaY < 0 ? 1 : - 1 );
+
+	}
+
+	_handleNavigationBlur() {
+
+		this._pointerButtons.clear();
+		this._navigationKeys.clear();
+		this.navigationActive = false;
+		this._speedBoostActive = false;
+		this._navigationLastUpdate = null;
+		this._velocity.set( 0, 0, 0 );
+		this._targetVelocity.set( 0, 0, 0 );
+		if ( this.controls.domElement?.style ) this.controls.domElement.style.cursor = '';
+
+	}
+
+	/** Set the displayed camera speed level (1-8). */
+	setCameraSpeedLevel( level ) {
+
+		if ( ! Number.isFinite( level ) ) return;
+		const nextLevel = MathUtils.clamp( Math.round( level ), 1, CAMERA_SPEED_MULTIPLIERS.length );
+		if ( nextLevel === this.cameraSpeedLevel ) return;
+		this.cameraSpeedLevel = nextLevel;
+		this.dispatchEvent( { type: 'CameraSpeedChanged', level: nextLevel } );
+
+	}
+
+	/** Increase or decrease the camera speed by a number of levels. */
+	adjustCameraSpeed( delta ) {
+
+		this.setCameraSpeedLevel( this.cameraSpeedLevel + delta );
+
+	}
+
+	_updateLookDistance() {
+
+		const distance = this.camera.position.distanceTo?.( this.controls.target );
+		this._lookDistance = Number.isFinite( distance ) && distance > 0 ? distance : 5;
+
+	}
+
+	_getMovementSpeed() {
+
+		const baseSpeed = Math.max( this._lookDistance * 0.75, this.camera.near * 10, 0.1 );
+		const levelMultiplier = CAMERA_SPEED_MULTIPLIERS[ this.cameraSpeedLevel - 1 ];
+		return baseSpeed * levelMultiplier * ( this._speedBoostActive ? 2 : 1 );
+
+	}
+
+	_notifyNavigationChange() {
+
+		this.controls.dispatchEvent( { type: 'change' } );
+
+	}
+
+	_translate( movement ) {
+
+		this.camera.position.add( movement );
+		this.controls.target.add( movement );
+		this.controls.update();
+
+	}
+
+	_lookAround( movementX, movementY ) {
+
+		this._lookEuler.setFromQuaternion( this.camera.quaternion );
+		this._lookEuler.y -= movementX * this.lookSensitivity;
+		this._lookEuler.x -= movementY * this.lookSensitivity;
+		this._lookEuler.x = MathUtils.clamp( this._lookEuler.x, - Math.PI / 2, Math.PI / 2 );
+		this.camera.quaternion.setFromEuler( this._lookEuler );
+		this._forward.set( 0, 0, - 1 ).applyQuaternion( this.camera.quaternion );
+		this.controls.target.copy( this.camera.position ).addScaledVector( this._forward, this._lookDistance );
+		this.controls.update();
+
+	}
+
+	_dolly( movementY ) {
+
+		this._forward.set( 0, 0, - 1 ).applyQuaternion( this.camera.quaternion );
+		this._move.copy( this._forward ).multiplyScalar( - movementY * this._getMovementSpeed() * 0.01 );
+		this._translate( this._move );
+
+	}
+
+	_pan( movementX, movementY ) {
+
+		this._right.set( 1, 0, 0 ).applyQuaternion( this.camera.quaternion );
+		this._up.set( 0, 1, 0 ).applyQuaternion( this.camera.quaternion );
+		this._move.copy( this._right ).multiplyScalar( - movementX )
+			.addScaledVector( this._up, movementY ).multiplyScalar( this._lookDistance * 0.002 );
+		this._translate( this._move );
+
+	}
+
+	/** Update OrbitControls and eased, RMB-gated keyboard movement once per frame. */
+	update() {
+
+		this.controls.update();
+
+		const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+		if ( this._navigationLastUpdate === null ) return;
+		const deltaSeconds = Math.min( ( now - this._navigationLastUpdate ) / 1000, 0.1 );
+		this._navigationLastUpdate = now;
+
+		const acceptsInput = this.navigationActive && this._pointerButtons.has( 2 ) && this.controls.enabled;
+		const forwardAmount = acceptsInput
+			? Number( this._navigationKeys.has( 'KeyW' ) ) - Number( this._navigationKeys.has( 'KeyS' ) ) : 0;
+		const rightAmount = acceptsInput
+			? Number( this._navigationKeys.has( 'KeyD' ) ) - Number( this._navigationKeys.has( 'KeyA' ) ) : 0;
+		const upAmount = acceptsInput
+			? Number( this._navigationKeys.has( 'KeyE' ) ) - Number( this._navigationKeys.has( 'KeyQ' ) ) : 0;
+		const hasInput = forwardAmount !== 0 || rightAmount !== 0 || upAmount !== 0;
+
+		this._targetVelocity.set( 0, 0, 0 );
+		if ( hasInput ) {
+
+			this._forward.set( 0, 0, - 1 ).applyQuaternion( this.camera.quaternion );
+			this._right.set( 1, 0, 0 ).applyQuaternion( this.camera.quaternion );
+			this._targetVelocity.copy( this._forward ).multiplyScalar( forwardAmount )
+				.addScaledVector( this._right, rightAmount )
+				.addScaledVector( this._up.set( 0, 1, 0 ), upAmount )
+				.normalize().multiplyScalar( this._getMovementSpeed() );
+
+		}
+
+		const response = hasInput ? this.movementAcceleration : this.movementDeceleration;
+		this._velocity.lerp( this._targetVelocity, 1 - Math.exp( - response * deltaSeconds ) );
+		if ( ! hasInput && this._velocity.lengthSq() < 1e-6 ) {
+
+			this._velocity.set( 0, 0, 0 );
+			this._navigationLastUpdate = null;
+			return;
+
+		}
+
+		this._move.copy( this._velocity ).multiplyScalar( deltaSeconds );
+		if ( this._move.lengthSq() > 0 ) this._translate( this._move );
+
+	}
+
 	/**
 	 * Sets the list of available cameras (default + extracted from model).
 	 * @param {import('three').PerspectiveCamera[]} cameras
@@ -65,7 +379,10 @@ export class CameraManager extends EventDispatcher {
 	setCameras( cameras ) {
 
 		this.cameras = cameras;
+		this.camera.userData ||= {};
+		this.camera.userData.clipStart = 0;
 		this._userCameraCounter = 0;
+		this.resetAutoFocus();
 
 	}
 
@@ -83,8 +400,10 @@ export class CameraManager extends EventDispatcher {
 		const cam = new PerspectiveCamera( src.fov, src.aspect, src.near, src.far );
 		cam.position.copy( src.position );
 		cam.quaternion.copy( src.quaternion );
+		cam.scale.copy( src.scale );
 		cam.updateMatrixWorld( true );
 
+		cam.userData.clipStart = getCameraClipStart( src );
 		cam.userData.__rayzeeUserCamera = true;
 		cam.userData.__rayzeeEffects = this._captureEffects();
 		if ( this.controls ) cam.userData.__rayzeeOrbitTarget = this.controls.target.clone();
@@ -190,6 +509,9 @@ export class CameraManager extends EventDispatcher {
 			focalLength: get( 'focalLength' ),
 			apertureScale: get( 'apertureScale' ),
 			anamorphicRatio: get( 'anamorphicRatio' ),
+			dofMode: get( 'dofMode' ) ?? 'legacy',
+			dofBlur: get( 'dofBlur' ) ?? 0.05,
+			unitsPerMetre: get( 'unitsPerMetre' ) ?? 1,
 			autoFocusMode: this.autoFocusMode,
 			afScreenPoint: { ...this.afScreenPoint },
 		};
@@ -211,6 +533,9 @@ export class CameraManager extends EventDispatcher {
 			focalLength: eff.focalLength,
 			apertureScale: eff.apertureScale,
 			anamorphicRatio: eff.anamorphicRatio,
+			dofMode: eff.dofMode ?? 'legacy',
+			dofBlur: eff.dofBlur ?? 0.05,
+			unitsPerMetre: eff.unitsPerMetre ?? 1,
 		} );
 
 		if ( eff.autoFocusMode !== undefined ) this.setAutoFocusMode( eff.autoFocusMode );
@@ -259,6 +584,7 @@ export class CameraManager extends EventDispatcher {
 			this._defaultCameraState = {
 				position: this.camera.position.clone(),
 				quaternion: this.camera.quaternion.clone(),
+				scale: this.camera.scale.clone(),
 				fov: this.camera.fov,
 				near: this.camera.near,
 				far: this.camera.far,
@@ -275,9 +601,13 @@ export class CameraManager extends EventDispatcher {
 			const s = this._defaultCameraState;
 			this.camera.position.copy( s.position );
 			this.camera.quaternion.copy( s.quaternion );
+			// Clears a mirror picked up from an imported camera; older saved states
+			// predate the field and are unmirrored by definition.
+			this.camera.scale.copy( s.scale ?? DEFAULT_CAMERA_SCALE );
 			this.camera.fov = s.fov;
 			this.camera.near = s.near;
 			this.camera.far = s.far;
+			this.camera.userData.clipStart = 0;
 			this.camera.updateProjectionMatrix();
 			this.camera.updateMatrixWorld( true );
 
@@ -294,9 +624,15 @@ export class CameraManager extends EventDispatcher {
 
 			this.camera.position.copy( sourceCamera.position );
 			this.camera.quaternion.copy( sourceCamera.quaternion );
+			// An imported camera can carry a mirror (a negative axis scale) that no
+			// quaternion can express — a pbrt scene's `Scale -1 1 1`, for one. Copying
+			// pose alone would silently un-mirror the view.
+			this.camera.scale.copy( sourceCamera.scale );
 			this.camera.fov = sourceCamera.fov;
 			this.camera.near = sourceCamera.near;
 			this.camera.far = sourceCamera.far;
+			this.camera.userData ||= {};
+			this.camera.userData.clipStart = getCameraClipStart( sourceCamera );
 			this.camera.updateProjectionMatrix();
 			this.camera.updateMatrixWorld( true );
 
@@ -323,6 +659,8 @@ export class CameraManager extends EventDispatcher {
 
 		}
 
+		this.resetAutoFocus();
+
 		// Restore the incoming camera's own DOF/focus effects (if it has any saved;
 		// otherwise it inherits the current global config).
 		this._applyEffects( this.cameras[ index ]?.userData?.__rayzeeEffects );
@@ -333,7 +671,7 @@ export class CameraManager extends EventDispatcher {
 		// Emit UI-facing effects: focusDistance unscaled (matching AUTO_FOCUS_UPDATED),
 		// so the adapter is a plain passthrough with no scene-scale awareness.
 		const effects = this._captureEffects();
-		if ( effects ) effects.focusDistance /= this._getSceneScale();
+		if ( effects && ( effects.dofMode ?? 'legacy' ) === 'legacy' ) effects.focusDistance /= this._getSceneScale();
 		this.dispatchEvent( { type: 'CameraSwitched', cameraIndex: index, effects, fov: this.camera.fov } );
 
 	}
@@ -379,6 +717,15 @@ export class CameraManager extends EventDispatcher {
 			this._afPointDirty = true;
 
 		}
+
+	}
+
+	/** Reset focus history after a scene, camera, or lens-model change. */
+	resetAutoFocus() {
+
+		this._lastValidFocusDistance = null;
+		this._smoothedFocusDistance = null;
+		this._afPointDirty = true;
 
 	}
 
@@ -429,7 +776,7 @@ export class CameraManager extends EventDispatcher {
 		// off (the default) the per-frame scene raycast is pure waste, so skip it.
 		// Re-snap on the frame DOF turns back on so focus is correct immediately
 		// rather than racking from a stale smoothed value.
-		if ( ! pathTracer?.enableDOF?.value ) {
+		if ( ! pathTracer?.enableDOF?.value || pathTracer.cameraProjection?.value === 1 ) {
 
 			this._afSuspended = true;
 			return;
@@ -458,6 +805,7 @@ export class CameraManager extends EventDispatcher {
 		if ( ! raycaster ) return;
 
 		raycaster.setFromCamera( { x: ndcX, y: ndcY }, this.camera );
+		setCameraRayClip( raycaster, this.camera );
 		const intersects = raycaster.intersectObjects( meshScene.children, true );
 
 		const validHit = intersects.find( hit =>
@@ -467,10 +815,11 @@ export class CameraManager extends EventDispatcher {
 			hit.object.type === 'Mesh'
 		);
 
+		const legacy = pathTracer?.dofMode?.value === undefined || pathTracer.dofMode.value === 2;
 		let rawDistance;
 		if ( validHit ) {
 
-			rawDistance = validHit.distance;
+			rawDistance = legacy ? validHit.distance : viewDepth( validHit.point, this.camera );
 			this._lastValidFocusDistance = rawDistance;
 
 		} else {
@@ -482,7 +831,8 @@ export class CameraManager extends EventDispatcher {
 			} else {
 
 				const scale = assetLoader?.getSceneScale() || 1.0;
-				rawDistance = AF_DEFAULTS.FALLBACK_DISTANCE * scale;
+				const targetDepth = ! legacy && this.controls ? viewDepth( this.controls.target, this.camera ) : 0;
+				rawDistance = targetDepth > 0 ? targetDepth : AF_DEFAULTS.FALLBACK_DISTANCE * scale;
 				this._lastValidFocusDistance = rawDistance;
 
 			}
@@ -524,7 +874,7 @@ export class CameraManager extends EventDispatcher {
 
 			// Update store for UI display (unscaled value)
 			const scale = assetLoader?.getSceneScale() || 1.0;
-			this.dispatchEvent( { type: EngineEvents.AUTO_FOCUS_UPDATED, distance: newFocus / scale } );
+			this.dispatchEvent( { type: EngineEvents.AUTO_FOCUS_UPDATED, distance: legacy ? newFocus / scale : newFocus, worldDistance: newFocus } );
 
 			const changeRatio = Math.abs( newFocus - prevFocus ) / Math.max( prevFocus, 0.001 );
 			if ( forceReset ) {
@@ -600,6 +950,7 @@ export class CameraManager extends EventDispatcher {
 			fov: camera.fov,
 			near: camera.near,
 			far: camera.far,
+			clipStart: getCameraClipStart( camera ),
 			isUserCamera: !! camera.userData?.__rayzeeUserCamera,
 			orbitTarget: vector( camera.userData?.__rayzeeOrbitTarget ),
 			effects: effects( camera.userData?.__rayzeeEffects ),
@@ -633,6 +984,8 @@ export class CameraManager extends EventDispatcher {
 			if ( Number.isFinite( descriptor.near ) ) camera.near = descriptor.near;
 			if ( Number.isFinite( descriptor.far ) ) camera.far = descriptor.far;
 			if ( descriptor.name ) camera.name = descriptor.name;
+			// Older projects have no clipStart; preserve the imported camera's metadata.
+			if ( Number.isFinite( descriptor.clipStart ) ) camera.userData.clipStart = Math.max( 0, descriptor.clipStart );
 			camera.userData.__rayzeeEffects = descriptor.effects ? { ...descriptor.effects } : null;
 			if ( descriptor.orbitTarget ) camera.userData.__rayzeeOrbitTarget = new Vector3().fromArray( descriptor.orbitTarget );
 			camera.updateProjectionMatrix();
@@ -673,6 +1026,8 @@ export class CameraManager extends EventDispatcher {
 
 	dispose() {
 
+		this._removeNavigationListeners();
+		this._handleNavigationBlur();
 		this.controls?.dispose();
 
 	}

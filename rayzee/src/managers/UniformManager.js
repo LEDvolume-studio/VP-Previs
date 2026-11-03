@@ -19,6 +19,8 @@ const SHADER_NAMES = {
 	cameraProjectionMatrix: 'ptCameraProjectionMatrix',
 };
 
+export const LIGHT_FLOATS = Object.freeze( { directional: 12, area: 16, point: 10, spot: 20 } );
+
 export class UniformManager {
 
 	constructor( width = 1920, height = 1080 ) {
@@ -268,11 +270,12 @@ export class UniformManager {
 		this._lightBuffers = {
 			directional: uniformArray( new Float32Array( 12 * 16 ), 'float' ),
 			area: uniformArray( new Float32Array( 16 * 16 ), 'float' ),
-			point: uniformArray( new Float32Array( 9 * 16 ), 'float' ),
+			point: uniformArray( new Float32Array( LIGHT_FLOATS.point * 16 ), 'float' ),
 			spot: uniformArray( new Float32Array( 20 * 16 ), 'float' ),
 		};
 
 		// Camera matrices
+		u( 'cameraClipStart', 0, 'float' );
 		u( 'cameraWorldMatrix', new Matrix4(), 'mat4' );
 		u( 'cameraProjectionMatrixInverse', new Matrix4(), 'mat4' );
 		u( 'cameraViewMatrix', new Matrix4(), 'mat4' );
@@ -292,7 +295,10 @@ export class UniformManager {
 		u( 'aperture', DEFAULT_STATE.aperture, 'float' );
 		u( 'apertureScale', 1.0, 'float' );
 		u( 'anamorphicRatio', DEFAULT_STATE.anamorphicRatio ?? 1.0, 'float' );
-		u( 'sceneScale', 1.0, 'float' );
+		u( 'sceneScale', 1.0, 'float' ); // Retained for legacy lens compatibility.
+		u( 'unitsPerMetre', DEFAULT_STATE.unitsPerMetre, 'float' );
+		u( 'dofMode', 2, 'int' );
+		u( 'dofBlur', DEFAULT_STATE.dofBlur, 'float' );
 
 		// Sampling — use the module-level uniform from Random.js so TSL sees the same node
 		this._uniforms.set( 'samplingTechnique', samplingTechniqueUniform );

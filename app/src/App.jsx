@@ -1,4 +1,5 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState, lazy, Suspense } from 'react';
+import PlateDownloadStatus from './components/plates/PlateDownloadStatus.jsx';
 import { initDatabase } from '@/utils/database';
 import TopBar from './components/layout/TopBar/TopBar';
 import LeftSidebar from '@/components/layout/LeftSideBar/LeftSidebar';
@@ -10,15 +11,20 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { useStore } from '@/store';
+import { useCameraStore, useStore } from '@/store';
 import { getApp } from '@/lib/appProxy';
 import { createLogger } from 'rayzee';
 import { projectSession } from '@/services/projects/ProjectSession';
 import { useProjectStore } from '@/services/projects/projectStore';
+import { undoManager } from '@/services/UndoManager';
+
+const PlateLibraryDialog = lazy( () => import( './components/plates/PlateLibraryDialog.jsx' ) );
 
 const log = createLogger( 'app' );
 
 const App = () => {
+
+	const [ showPlateLibrary, setShowPlateLibrary ] = useState( false );
 
 	// Memoized debounced resize handler to prevent recreation on every render
 	const timeoutRef = useRef( null );
@@ -83,6 +89,23 @@ const App = () => {
 
 			const noModifiers = ! event.ctrlKey && ! event.altKey && ! event.shiftKey && ! event.metaKey;
 			const hasSelection = !! useStore.getState().selectedObject;
+			if ( ( event.ctrlKey || event.metaKey ) && event.key.toLowerCase() === 'z' ) {
+
+				event.preventDefault();
+				const operation = event.shiftKey ? undoManager.redo() : undoManager.undo();
+				operation.catch( error => log.error( 'history operation failed:', error ) );
+				return;
+
+			}
+
+			if ( event.ctrlKey && event.key.toLowerCase() === 'y' ) {
+
+				event.preventDefault();
+				undoManager.redo().catch( error => log.error( 'redo failed:', error ) );
+				return;
+
+			}
+
 			if ( ( event.ctrlKey || event.metaKey ) && event.key.toLowerCase() === 's' ) {
 
 				event.preventDefault();
@@ -135,6 +158,17 @@ const App = () => {
 							handleResetCamera();
 
 						}
+
+					}
+
+					break;
+
+				case 'f':
+				case 'F':
+					if ( noModifiers ) {
+
+						event.preventDefault();
+						useCameraStore.getState().handleToggleFocusMode();
 
 					}
 
@@ -236,6 +270,8 @@ const App = () => {
 		<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
 			<div className="flex flex-col w-screen h-screen">
 				<TopBar />
+				<div className="admin-plate-download-status"><PlateDownloadStatus onOpen={() => setShowPlateLibrary( true )}/></div>
+				{showPlateLibrary && <Suspense fallback={null}><PlateLibraryDialog onClose={() => setShowPlateLibrary( false )}/></Suspense>}
 				<ResizablePanelGroup
 					ref={panelGroupRef}
 					direction="horizontal"

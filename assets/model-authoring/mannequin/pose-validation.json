@@ -1,0 +1,12 @@
+{
+  "standing": {
+    "vertices": 11326,
+    "height": 1.8059593439102173,
+    "floor": 0.0
+  },
+  "sitting": {
+    "vertices": 11326,
+    "height": 1.4463014602661133,
+    "floor": 0.0
+  }
+}

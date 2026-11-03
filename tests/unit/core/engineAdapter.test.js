@@ -28,6 +28,7 @@ vi.mock( 'rayzee', () => ( {
 		ANIMATION_PAUSED: 'ANIMATION_PAUSED',
 		ANIMATION_STOPPED: 'ANIMATION_STOPPED',
 		ANIMATION_FINISHED: 'ANIMATION_FINISHED',
+		PATH_TRACER_ENABLED_CHANGED: 'PATH_TRACER_ENABLED_CHANGED',
 	}
 } ) );
 
@@ -83,13 +84,19 @@ function createMockStores() {
 		loading: {},
 		stats: {},
 	};
+	const pathTracerState = {
+		setCurrentAutoExposure: vi.fn(),
+		setCurrentAvgLuminance: vi.fn(),
+		setPathTracerActive: vi.fn(),
+	};
 
 	return {
 		useStore: { getState: () => state, setState: vi.fn() },
 		useCameraStore: { getState: () => ( { setSelectMode: vi.fn(), handleAFScreenPointChange: vi.fn(), setAutoFocusDistance: vi.fn() } ) },
-		usePathTracerStore: { getState: () => ( { setCurrentAutoExposure: vi.fn(), setCurrentAvgLuminance: vi.fn() } ) },
+		usePathTracerStore: { getState: () => pathTracerState },
 		useAnimationStore: { getState: () => ( { setIsPlaying: vi.fn(), setIsPaused: vi.fn(), setClips: vi.fn() } ) },
 		_state: state,
+		_pathTracerState: pathTracerState,
 	};
 
 }
@@ -150,6 +157,15 @@ describe( 'connectEngineToStore', () => {
 
 	} );
 
+	it( 'keeps the effective renderer mode synchronized with the engine', () => {
+
+		connectEngineToStore( engine, stores );
+		engine._emit( 'PATH_TRACER_ENABLED_CHANGED', { enabled: false } );
+
+		expect( stores._pathTracerState.setPathTracerActive ).toHaveBeenCalledWith( false );
+
+	} );
+
 	it( 'should call setIsDenoising(true) on DENOISING_START', () => {
 
 		connectEngineToStore( engine, stores );
@@ -167,6 +183,21 @@ describe( 'connectEngineToStore', () => {
 		engine._emit( 'DENOISING_END' );
 
 		expect( stores._state.setIsDenoising ).toHaveBeenCalledWith( false );
+
+	} );
+
+	it( 'should ignore cadence denoises so the status badge does not flicker', () => {
+
+		connectEngineToStore( engine, stores );
+
+		engine._emit( 'DENOISING_START', { continuous: true } );
+		engine._emit( 'DENOISING_END', { continuous: true } );
+
+		expect( stores._state.setIsDenoising ).not.toHaveBeenCalled();
+
+		engine._emit( 'DENOISING_START', { continuous: false } );
+
+		expect( stores._state.setIsDenoising ).toHaveBeenCalledWith( true );
 
 	} );
 

@@ -28,12 +28,23 @@ export class OutlineHelper {
 
 		this.layer = 'scene';
 		this._enabled = true;
+		this._scene = scene;
+		this._camera = camera;
+		this._selectedObjects = [];
+		this._outlineNode = null;
+		this._material = null;
+		this._quad = null;
+		this._build( camera );
+
+	}
+
+	_build( camera ) {
 
 		// Outline node (handles its own multi-pass rendering via updateBefore).
 		// It sizes its render targets from the drawing buffer of whatever renderer
 		// draws it — the view overlay surface — so no size override is needed.
-		this._outlineNode = outline( scene, camera, {
-			selectedObjects: [],
+		this._outlineNode = outline( this._scene, camera, {
+			selectedObjects: this._selectedObjects,
 			edgeThickness: uniform( 1.0 ),
 			edgeGlow: uniform( 0.0 ),
 		} );
@@ -76,7 +87,36 @@ export class OutlineHelper {
 	 */
 	setSelectedObjects( objects ) {
 
-		this._outlineNode.selectedObjects = objects;
+		this._selectedObjects = objects;
+		this._outlineNode.selectedObjects = this._selectedObjects;
+
+	}
+
+	/** Update the camera used by the outline's depth and mask passes. */
+	setCamera( camera ) {
+
+		if ( ! camera || this._camera === camera ) return;
+		const projectionChanged = camera.isOrthographicCamera !== this._camera?.isOrthographicCamera;
+		this._camera = camera;
+
+		// OutlineNode chooses perspective-vs-orthographic depth conversion while its
+		// node graph is built. Crossing projection types therefore needs a rebuild.
+		if ( projectionChanged ) {
+
+			this._outlineNode?.dispose();
+			this._material?.dispose();
+			this._build( camera );
+			return;
+
+		}
+
+		this._outlineNode.camera = camera;
+		for ( const referenceNode of [ this._outlineNode._cameraNear, this._outlineNode._cameraFar ] ) {
+
+			referenceNode.object = camera;
+			referenceNode.reference = camera;
+
+		}
 
 	}
 
@@ -86,7 +126,7 @@ export class OutlineHelper {
 	 */
 	get visible() {
 
-		return this._enabled && this._outlineNode.selectedObjects.length > 0;
+		return this._enabled && this._selectedObjects.length > 0;
 
 	}
 
@@ -126,6 +166,9 @@ export class OutlineHelper {
 		// QuadMesh extends Mesh — no dispose method on the mesh itself;
 		// its material is already disposed above. Just drop the ref.
 		this._quad = null;
+		this._scene = null;
+		this._camera = null;
+		this._selectedObjects = [];
 
 	}
 

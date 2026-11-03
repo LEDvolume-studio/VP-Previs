@@ -14,6 +14,8 @@ import { useBackendEvent } from '@/hooks/useBackendEvent';
 import { useActiveApp } from '@/hooks/useActiveApp';
 import { FieldOfView } from "@/assets/icons";
 import { Separator } from "@/components/ui/separator";
+import { NumberInput } from '@/components/ui/number-input';
+import { FRAME_OVERLAY_PRESETS, SENSOR_PRESETS } from '@/utils/cameraSensor';
 
 /** Min/Max pair for a symmetric ±limit range — the Slider is single-thumb, so it takes two rows. */
 const RangeRows = ( { label, limit, value, onChange } ) => [ 0, 1 ].map( i => (
@@ -39,12 +41,20 @@ const CameraTab = () => {
 		focalLength,
 		enableDOF,
 		zoomToCursor,
+		dollyZoom,
 		activePreset,
 		focusMode,
 		apertureScale,
 		anamorphicRatio,
+		dofMode,
+		dofBlur,
+		unitsPerMetre,
 		cameraNames,
 		selectedCameraIndex,
+		sensorPreset,
+		sensorWidth,
+		sensorHeight,
+		frameOverlayRatio,
 
 		// Auto-focus state
 		autoFocusMode,
@@ -54,6 +64,8 @@ const CameraTab = () => {
 		// Basic setters
 		setCameraNames,
 		setSelectedCameraIndex,
+		setLensState,
+		applySensorSettings,
 
 		// Handlers
 		handleToggleFocusMode,
@@ -64,13 +76,20 @@ const CameraTab = () => {
 		handleFocalLengthChange,
 		handleEnableDOFChange,
 		handleZoomToCursorChange,
+		handleDollyZoomChange,
 		handleCameraMove,
 		handleCameraChange,
 		handleAddCamera,
 		handleRemoveCamera,
 		handleApertureScaleChange,
 		handleAnamorphicRatioChange,
+		handleDofModeChange,
+		handleDofBlurChange,
+		handleUnitsPerMetreChange,
 		handleFocusChangeEvent,
+		handleSensorPresetChange,
+		handleSensorDimensionChange,
+		setFrameOverlayRatio,
 
 		// Auto-focus handlers
 		handleAutoFocusModeChange,
@@ -106,10 +125,15 @@ const CameraTab = () => {
 
 			setCameraNames( app.cameraManager.getNames() );
 			setSelectedCameraIndex( app.currentCameraIndex ?? 0 );
+			const camera = app.cameraManager.active;
+			const currentFocalLength = camera.getFocalLength();
+			applySensorSettings( currentFocalLength );
+			setLensState( camera.fov, currentFocalLength );
+			app.settings.set( 'focalLength', currentFocalLength, { reset: false } );
 
 		}
 
-	}, [ activeApp, setCameraNames, setSelectedCameraIndex ] );
+	}, [ activeApp, applySensorSettings, setCameraNames, setLensState, setSelectedCameraIndex ] );
 
 	const cameraPoints = [
 		{ x: 0, y: 50 }, // left view
@@ -190,6 +214,62 @@ const CameraTab = () => {
 					</Select>
 				</Row>
 
+				<Row>
+					<span className="opacity-50 text-xs truncate">Sensor</span>
+					<Select value={sensorPreset} onValueChange={handleSensorPresetChange} disabled={panorama}>
+						<SelectTrigger className="max-w-32 h-5 rounded-full">
+							<SelectValue placeholder="Sensor size" />
+						</SelectTrigger>
+						<SelectContent>
+							{Object.entries( SENSOR_PRESETS ).map( ( [ key, preset ] ) => (
+								<SelectItem key={key} value={key}>{preset.label}</SelectItem>
+							) )}
+							<SelectItem value="custom">Custom</SelectItem>
+						</SelectContent>
+					</Select>
+				</Row>
+
+				<Row title="Sensor dimensions are locked to 16:9">
+					<span className="opacity-50 text-xs truncate">Sensor (mm)</span>
+					<div className="flex items-center gap-1 text-xs text-muted-foreground">
+						<NumberInput
+							aria-label="Sensor width in millimetres"
+							value={sensorWidth}
+							min={1}
+							max={100}
+							step={0.1}
+							precision={2}
+							disabled={panorama}
+							onValueChange={value => handleSensorDimensionChange( 'width', value )}
+						/>
+						<span>&times;</span>
+						<NumberInput
+							aria-label="Sensor height in millimetres"
+							value={sensorHeight}
+							min={1}
+							max={100}
+							step={0.1}
+							precision={2}
+							disabled={panorama}
+							onValueChange={value => handleSensorDimensionChange( 'height', value )}
+						/>
+					</div>
+				</Row>
+
+				<Row>
+					<span className="opacity-50 text-xs truncate">Ratio Overlay</span>
+					<Select value={frameOverlayRatio} onValueChange={setFrameOverlayRatio}>
+						<SelectTrigger className="max-w-32 h-5 rounded-full">
+							<SelectValue placeholder="Overlay ratio" />
+						</SelectTrigger>
+						<SelectContent>
+							{Object.entries( FRAME_OVERLAY_PRESETS ).map( ( [ key, preset ] ) => (
+								<SelectItem key={key} value={key}>{preset.label}</SelectItem>
+							) )}
+						</SelectContent>
+					</Select>
+				</Row>
+
 				{panorama && (
 					<>
 						<Row>
@@ -219,6 +299,29 @@ const CameraTab = () => {
 				</Row>
 
 				<Row>
+					<Slider
+						label={"Focal Length (mm)"}
+						icon={Ruler}
+						min={CAMERA_RANGES.focalLength.min}
+						max={CAMERA_RANGES.focalLength.max}
+						step={1}
+						value={[ focalLength ]}
+						onValueChange={handleFocalLengthChange}
+						disabled={panorama}
+					/>
+				</Row>
+
+				<Row>
+					<Switch
+						checked={dollyZoom}
+						label="Dolly Zoom"
+						onCheckedChange={handleDollyZoomChange}
+						disabled={panorama}
+						title="Move the camera to preserve subject size when changing FOV or focal length"
+					/>
+				</Row>
+
+				<Row>
 					<Switch
 						checked={zoomToCursor}
 						label="Zoom to Cursor"
@@ -238,6 +341,32 @@ const CameraTab = () => {
 
 				{enableDOF && (
 					<>
+						<Row>
+							<span className="opacity-50 text-xs truncate">Lens Model</span>
+							<Select value={dofMode} onValueChange={handleDofModeChange}>
+								<SelectTrigger className="max-w-32 h-5 rounded-full"><SelectValue /></SelectTrigger>
+								<SelectContent>
+									<SelectItem value="legacy">Legacy</SelectItem>
+									<SelectItem value="physical">Physical</SelectItem>
+									<SelectItem value="look">Look</SelectItem>
+								</SelectContent>
+							</Select>
+						</Row>
+						{dofMode === 'look' && (
+							<Row>
+								<Slider label="Background Blur" min={0} max={0.25} step={0.001}
+									value={[ dofBlur ]} onValueChange={handleDofBlurChange}
+									title="Far-background blur as a fraction of image height, independent of scene scale" />
+							</Row>
+						)}
+						{dofMode === 'physical' && (
+							<Row>
+								<span className="opacity-50 text-xs truncate" title="1 for metre scenes, 100 for centimetres, 1000 for millimetres">Scene Units / Metre</span>
+								<NumberInput className="w-28 shrink-0" aria-label="Scene units per metre" value={unitsPerMetre}
+									min={0.000001} max={1000000} step={1} precision={6}
+									onValueChange={handleUnitsPerMetreChange} />
+							</Row>
+						)}
 						<Row>
 							<Select value={activePreset} onValueChange={handlePresetChange}>
 								<span className="opacity-50 text-xs truncate">DOF Preset</span>
@@ -287,10 +416,10 @@ const CameraTab = () => {
 						{! isAutoFocus && (
 							<Row>
 								<Slider
-									label={"Focus Distance (m)"}
+									label={dofMode === 'legacy' ? 'Focus Distance (m)' : 'Focus (scene units)'}
 									icon={Telescope}
 									min={CAMERA_RANGES.focusDistance.min}
-									max={CAMERA_RANGES.focusDistance.max}
+									max={dofMode === 'legacy' ? CAMERA_RANGES.focusDistance.max : Math.max( CAMERA_RANGES.focusDistance.max, focusDistance * 2, unitsPerMetre * 100 )}
 									step={0.1}
 									value={[ focusDistance.toFixed( 1 ) ]}
 									onValueChange={( values ) => handleFocusDistanceChange( values[ 0 ] )}
@@ -300,7 +429,7 @@ const CameraTab = () => {
 									size="icon"
 									onClick={handleToggleFocusMode}
 									className="ml-2 h-5 rounded-full"
-									title="Click in scene to set focus point"
+									title="Click in scene to set focus point (F)"
 								>
 									<Target size={12} />
 								</Button>
@@ -312,10 +441,10 @@ const CameraTab = () => {
 							<>
 								<Row>
 									<Slider
-										label={"Focus Distance (m)"}
+										label={dofMode === 'legacy' ? 'Focus Distance (m)' : 'Focus (scene units)'}
 										icon={Telescope}
 										min={CAMERA_RANGES.focusDistance.min}
-										max={CAMERA_RANGES.focusDistance.max}
+										max={dofMode === 'legacy' ? CAMERA_RANGES.focusDistance.max : Math.max( CAMERA_RANGES.focusDistance.max, focusDistance * 2, unitsPerMetre * 100 )}
 										step={0.1}
 										value={[ focusDistance.toFixed( 1 ) ]}
 										disabled={true}
@@ -350,47 +479,37 @@ const CameraTab = () => {
 							</>
 						)}
 
-						<Row>
-							<Select value={aperture.toString()} onValueChange={handleApertureChange}>
-								<span className="opacity-50 text-xs truncate">Aperture (f)</span>
-								<SelectTrigger className="max-w-32 h-5 rounded-full">
-									<div className="h-full pr-1 inline-flex justify-start items-center">
-										<Aperture size={12} className="z-10" />
-									</div>
-									<SelectValue placeholder="Select aperture" />
-								</SelectTrigger>
-								<SelectContent>
-									{CAMERA_RANGES.aperture.options.map( f => (
-										<SelectItem key={f} value={f.toString()}>{f}</SelectItem>
-									) )}
-								</SelectContent>
-							</Select>
-						</Row>
+						{dofMode !== 'look' && <>
+							<Row>
+								<Select value={aperture.toString()} onValueChange={handleApertureChange}>
+									<span className="opacity-50 text-xs truncate">Aperture (f)</span>
+									<SelectTrigger className="max-w-32 h-5 rounded-full">
+										<div className="h-full pr-1 inline-flex justify-start items-center">
+											<Aperture size={12} className="z-10" />
+										</div>
+										<SelectValue placeholder="Select aperture" />
+									</SelectTrigger>
+									<SelectContent>
+										{CAMERA_RANGES.aperture.options.map( f => (
+											<SelectItem key={f} value={f.toString()}>{f}</SelectItem>
+										) )}
+									</SelectContent>
+								</Select>
+							</Row>
 
-						<Row>
-							<Slider
-								label={"Focal Length (mm)"}
-								icon={Ruler}
-								min={CAMERA_RANGES.focalLength.min}
-								max={CAMERA_RANGES.focalLength.max}
-								step={1}
-								value={[ focalLength ]}
-								onValueChange={handleFocalLengthChange}
-							/>
-						</Row>
+							<Row>
+								<Slider
+									label={"DOF Intensity"}
+									icon={Aperture}
+									min={0.1}
+									max={2.0}
+									step={0.1}
+									value={[ apertureScale ?? 1.0 ]}
+									onValueChange={( values ) => handleApertureScaleChange( values[ 0 ] )}
+								/>
+							</Row>
 
-						<Row>
-							<Slider
-								label={"DOF Intensity"}
-								icon={Aperture}
-								min={0.1}
-								max={2.0}
-								step={0.1}
-								value={[ apertureScale ?? 1.0 ]}
-								onValueChange={( values ) => handleApertureScaleChange( values[ 0 ] )}
-							/>
-						</Row>
-
+						</>}
 						<Row>
 							<Slider
 								label={"Bokeh Stretch"}

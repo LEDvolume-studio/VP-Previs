@@ -5,6 +5,7 @@ import {
 	Mesh,
 	MeshBasicMaterial
 } from 'three';
+import { setCameraRayClip, viewDepth } from './cameraClip.js';
 import { EngineEvents } from '../EngineEvents.js';
 
 /**
@@ -202,12 +203,16 @@ export class InteractionManager extends EventDispatcher {
 		const mouseCoords = this.getMouseCoordinates( event );
 		this.raycaster.setFromCamera( mouseCoords, this.camera );
 
+		setCameraRayClip( this.raycaster, this.camera );
 		const intersects = this.raycaster.intersectObjects( this.scene.children, true );
 
 		if ( intersects.length > 0 ) {
 
 			const intersection = intersects[ 0 ];
-			const distance = intersection.distance;
+			const flatFocus = this.pathTracer?.dofMode?.value !== undefined
+				&& this.pathTracer.dofMode.value !== 2 && this.pathTracer?.cameraProjection?.value !== 1;
+			const distance = flatFocus ? viewDepth( intersection.point, this.camera ) : intersection.distance;
+			const legacy = this.pathTracer?.dofMode?.value === undefined || this.pathTracer.dofMode.value === 2;
 
 			// Show visual indicator at focus point
 			this.showFocusPoint( intersection.point );
@@ -218,7 +223,7 @@ export class InteractionManager extends EventDispatcher {
 			// Dispatch event with focus distance
 			this.dispatchEvent( {
 				type: 'focusChanged',
-				distance: distance / this.assetLoader.getSceneScale(),
+				distance: legacy ? distance / this.assetLoader.getSceneScale() : distance,
 				worldDistance: distance
 			} );
 
@@ -470,6 +475,7 @@ export class InteractionManager extends EventDispatcher {
 			const mouseCoords = this.getMouseCoordinates( event );
 			this.raycaster.setFromCamera( mouseCoords, this.camera );
 
+			setCameraRayClip( this.raycaster, this.camera );
 			const intersects = this.raycaster.intersectObjects( this.scene.children, true );
 			const validIntersects = this.filterValidIntersects( intersects );
 			const lightHit = this._pickLightHelper();
@@ -556,6 +562,7 @@ export class InteractionManager extends EventDispatcher {
 		const mouseCoords = this.getMouseCoordinates( event );
 		this.raycaster.setFromCamera( mouseCoords, this.camera );
 
+		setCameraRayClip( this.raycaster, this.camera );
 		const intersects = this.raycaster.intersectObjects( this.scene.children, true );
 		const validIntersects = this.filterValidIntersects( intersects );
 
@@ -730,11 +737,12 @@ export class InteractionManager extends EventDispatcher {
 	/**
 	 * Update dependencies (useful when scene/camera changes)
 	 */
-	updateDependencies( { scene, camera, floorPlane } ) {
+	updateDependencies( { scene, camera, floorPlane, orbitControls } ) {
 
 		if ( scene ) this.scene = scene;
 		if ( camera ) this.camera = camera;
 		if ( floorPlane ) this.floorPlane = floorPlane;
+		if ( orbitControls ) this._orbitControls = orbitControls;
 
 	}
 
@@ -844,4 +852,3 @@ export class InteractionManager extends EventDispatcher {
 	}
 
 }
-

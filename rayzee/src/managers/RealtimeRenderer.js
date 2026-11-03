@@ -1,12 +1,14 @@
 import {
-	Box3, Color, MathUtils, Object3D, PCFShadowMap, UnsignedByteType, Vector3
+	Box3, Color, MathUtils, Object3D, PCFShadowMap, UnsignedByteType, Vector2, Vector3
 } from 'three';
-import { RenderPipeline } from 'three/webgpu';
+import { RectAreaLightNode, RenderPipeline } from 'three/webgpu';
+import { RectAreaLightTexturesLib } from 'three/addons/lights/RectAreaLightTexturesLib.js';
 import {
 	emissive, metalness, mrt, normalView, output, packNormalToRGB,
 	pass, roughness, sample, unpackRGBToNormal, vec2, vec3, vec4,
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
+import { denoise } from 'three/addons/tsl/display/DenoiseNode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import { ssr } from 'three/addons/tsl/display/SSRNode.js';
@@ -28,20 +30,31 @@ const MAX_REALTIME_PIXEL_RATIO = 2;
  */
 export class RealtimeRenderer {
 
-	constructor( { renderer, scene, lightScene, camera, settings, postProcessing = true } ) {
+	constructor( { renderer, scene, lightScene, camera, settings, postProcessing = true, stableLightInventory = false } ) {
+
+		// Native area-light shader nodes require the shared LTC tables even when
+		// this renderer is hosted without PathTracerApp (for example students).
+		// These module-owned textures outlive individual viewports; do not rebuild
+		// or dispose them on every independent renderer create/dispose cycle.
+		if ( ! [ 'LTC_FLOAT_1', 'LTC_FLOAT_2', 'LTC_HALF_1', 'LTC_HALF_2' ].every( key => RectAreaLightTexturesLib[ key ]?.isDataTexture ) ) RectAreaLightTexturesLib.init();
+		RectAreaLightNode.setLTC( RectAreaLightTexturesLib );
 
 		this.renderer = renderer;
 		this.scene = scene;
 		this.lightScene = lightScene;
 		this.camera = camera;
 		this.settings = settings;
+		// Opt-in fixed-shot viewers retain shader light/shadow slots across cuts.
+		this._stableLightInventory = stableLightInventory;
 		this.lightProxies = [];
+		this._lightProxyBySource = new Map();
 		this._meshShadowState = new Map();
 		this._sourceLightMasks = new Map();
 		this._environment = null;
 		this.pipeline = null;
 		this.scenePass = null;
 		this.aoPass = null;
+		this.aoDenoise = null;
 		this.ssrPass = null;
 		this.bloomPass = null;
 		this.aaPass = null;
@@ -50,6 +63,7 @@ export class RealtimeRenderer {
 		this._pathTracerHeight = renderer.domElement?.height || 1;
 		this._displayWidth = 0;
 		this._displayHeight = 0;
+		this._drawingBufferSize = new Vector2();
 
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = PCFShadowMap;
@@ -57,10 +71,28 @@ export class RealtimeRenderer {
 
 	}
 
-	render() {
+	render( { width, height } = {} ) {
+
+		// Application-owned offline exports supply physical pixels. Never derive
+		// those frames from CSS, browser zoom, DPR, or the realtime size ceiling.
+		const fixedSize = width !== undefined || height !== undefined;
+		if ( fixedSize && ( ! Number.isInteger( width ) || ! Number.isInteger( height ) || width < 1 || height < 1 ) ) {
+
+			throw new Error( 'Raster output requires positive integer width and height' );
+
+		}
 
 		if ( ! this._active ) this.activate();
-		this._syncDisplaySize();
+		if ( fixedSize ) {
+
+			this.renderer.setPixelRatio?.( 1 );
+			this.renderer.setSize( width, height, false );
+
+		} else {
+
+			this._syncDisplaySize();
+
+		}
 
 		if ( this.pipeline ) {
 
@@ -69,6 +101,39 @@ export class RealtimeRenderer {
 		} else {
 
 			this.renderer.render( this.scene, this.camera );
+
+		}
+
+	}
+
+	/**
+	 * Draw an orthographic editor view with a neutral material and metric grid.
+	 * This deliberately bypasses the photographic post stack: editor views need
+	 * stable geometry values rather than exposure, bloom, SSR, or scene lighting.
+	 */
+	renderEditor( { camera, gridScene, overrideMaterial } ) {
+
+		if ( ! camera || ! gridScene || ! overrideMaterial ) return;
+		if ( ! this._active ) this.activate();
+		this._syncDisplaySize();
+
+		const oldOverride = this.scene.overrideMaterial;
+		const oldBackground = this.scene.background;
+		const oldAutoClear = this.renderer.autoClear;
+		try {
+
+			this.renderer.autoClear = true;
+			this.renderer.render( gridScene, camera );
+			this.renderer.autoClear = false;
+			this.scene.overrideMaterial = overrideMaterial;
+			this.scene.background = null;
+			this.renderer.render( this.scene, camera );
+
+		} finally {
+
+			this.scene.overrideMaterial = oldOverride;
+			this.scene.background = oldBackground;
+			this.renderer.autoClear = oldAutoClear;
 
 		}
 
@@ -100,6 +165,34 @@ export class RealtimeRenderer {
 		this._pathTracerWidth = width;
 		this._pathTracerHeight = height;
 		if ( this._active ) this._syncDisplaySize( true );
+
+	}
+
+	/** Output dimensions are independent of the orthographic viewport's shape. */
+	getPathTracerSize() {
+
+		return { width: this._pathTracerWidth, height: this._pathTracerHeight };
+
+	}
+
+	/** Reapply display sizing after a hidden tab or display change. */
+	refreshDisplaySize() {
+
+		this._syncDisplaySize( true );
+
+	}
+
+	/** Replace or clear the prepared environment, including the fallback cache.
+	 * Student fixed shots must not inherit the preceding shot's HDRI when their
+	 * explicit environment is null. Existing syncEnvironment callers are unchanged.
+	 */
+	setEnvironment( texture ) {
+
+		if ( texture !== null && ! texture?.isTexture ) throw new TypeError( 'Raster environment requires a texture or null' );
+		this._environment = texture;
+		this.lightScene.environment = texture;
+		this.scene.environment = texture;
+		this.syncEnvironment();
 
 	}
 
@@ -138,34 +231,58 @@ export class RealtimeRenderer {
 
 	}
 
-	/** Rebuild Three.js-native light proxies and shadow policy from canonical lights. */
+	/** Synchronize native raster lights without changing stable GPU light identities. */
 	syncLights() {
 
 		if ( ! this.scene || ! this.lightScene ) return;
 
-		this._removeLightProxies();
 		this._isolateImportedLights();
 		this._configureMeshShadows();
-		const bounds = new Box3().setFromObject( this.scene );
+		const bounds = this._getVisibleBounds();
 		this._fitScreenSpaceEffects( bounds );
 
 		const sources = this.lightScene.getObjectsByProperty( 'isLight', true )
 			.filter( light => ! light.userData?.[ RASTER_PROXY_KEY ] );
 		const shadowCandidates = sources
-			.filter( light => light.visible && ( light.isDirectionalLight || light.isSpotLight || light.isPointLight ) )
-			.sort( ( a, b ) => this._shadowPriority( b ) - this._shadowPriority( a ) );
+			.filter( light => ( this._stableLightInventory || light.visible ) && ( light.isDirectionalLight || light.isSpotLight || light.isPointLight ) )
+			.sort( ( a, b ) => {
+
+				if ( ! this._stableLightInventory ) return this._shadowPriority( b ) - this._shadowPriority( a );
+				const rank = light => light.isDirectionalLight ? 2 : light.isSpotLight ? 1 : 0;
+				return rank( b ) - rank( a ) || a.uuid.localeCompare( b.uuid );
+
+			} );
 		const shadowSources = new Set( shadowCandidates.slice( 0, 4 ) );
+		const current = new Map( sources.map( source => [ source.uuid, source ] ) );
+		for ( const [ sourceId, proxy ] of this._lightProxyBySource ) {
+
+			const source = current.get( sourceId );
+			if ( source && proxy.constructor === source.constructor && proxy.type === source.type ) continue;
+			this._disposeLightProxy( proxy );
+			this._lightProxyBySource.delete( sourceId );
+
+		}
+
+		this.lightProxies.length = 0;
 
 		for ( const source of sources ) {
 
-			const proxy = this._createLightProxy( source, shadowSources.has( source ), bounds );
+			let proxy = this._lightProxyBySource.get( source.uuid );
+			if ( proxy ) this._syncLightProxy( source, proxy, shadowSources.has( source ), bounds );
+			else {
+
+				proxy = this._createLightProxy( source, shadowSources.has( source ), bounds );
+				if ( proxy ) this._lightProxyBySource.set( source.uuid, proxy );
+
+			}
+
 			if ( ! proxy ) continue;
-			this.scene.add( proxy );
+			if ( proxy.parent !== this.scene ) this.scene.add( proxy );
 			this.lightProxies.push( proxy );
 
 			if ( proxy.target ) {
 
-				this.scene.add( proxy.target );
+				if ( proxy.target.parent !== this.scene ) this.scene.add( proxy.target );
 				this.lightProxies.push( proxy.target );
 
 			}
@@ -206,6 +323,7 @@ export class RealtimeRenderer {
 		this._restoreMeshShadows();
 		this.scenePass?.dispose();
 		this.aoPass?.dispose();
+		this.aoDenoise?.dispose();
 		this.ssrPass?.dispose();
 		this.bloomPass?.dispose();
 		this.aaPass?.dispose();
@@ -213,6 +331,7 @@ export class RealtimeRenderer {
 		this.pipeline = null;
 		this.scenePass = null;
 		this.aoPass = null;
+		this.aoDenoise = null;
 		this.ssrPass = null;
 		this.bloomPass = null;
 		this.aaPass = null;
@@ -249,7 +368,8 @@ export class RealtimeRenderer {
 		const normalNode = sample( uv => unpackRGBToNormal( packedNormalNode.sample( uv ) ) );
 
 		this.aoPass = ao( depthNode, normalNode, this.camera );
-		this.aoPass.resolutionScale = 0.75;
+		// Native resolution preserves fine architectural edges before spatial filtering.
+		this.aoPass.resolutionScale = 1;
 		this.aoPass.samples.value = 16;
 		this.aoPass.scale.value = 1.15;
 
@@ -268,12 +388,46 @@ export class RealtimeRenderer {
 
 		this.bloomPass = bloom( emissiveNode, 0.3, 0.35, 0.8 );
 
-		const occlusion = vec3( this.aoPass.getTextureNode().r );
+		// GTAO has no temporal filtering here. Filter against depth and normals so
+		// noise is reduced without smearing occlusion across beams and wall edges.
+		this.aoDenoise = denoise( this.aoPass.getTextureNode(), depthNode, normalNode, this.camera );
+		this.aoDenoise.radius.value = 3;
+		this.aoDenoise.depthPhi.value = 0.1;
+		const occlusion = vec3( this.aoDenoise.r );
 		const finalColor = colorNode.rgb.mul( occlusion )
 			.add( this.ssrPass.rgb )
 			.add( this.bloomPass.rgb );
 		this.aaPass = smaa( vec4( finalColor, colorNode.a ) );
 		this.pipeline.outputNode = this.aaPass;
+
+	}
+
+	_getVisibleBounds() {
+
+		const bounds = new Box3();
+		const meshBounds = new Box3();
+		this.scene.updateMatrixWorld( true );
+		// setFromObject includes invisible descendants: the hidden studio ground
+		// can be ten times larger than the building and inflate AO/shadow ranges.
+		this.scene.traverseVisible( object => {
+
+			if ( ! object.isMesh || ! object.geometry ) return;
+			if ( object.boundingBox !== undefined ) {
+
+				if ( object.boundingBox === null ) object.computeBoundingBox();
+				meshBounds.copy( object.boundingBox );
+
+			} else {
+
+				if ( object.geometry.boundingBox === null ) object.geometry.computeBoundingBox();
+				meshBounds.copy( object.geometry.boundingBox );
+
+			}
+
+			bounds.union( meshBounds.applyMatrix4( object.matrixWorld ) );
+
+		} );
+		return bounds;
 
 	}
 
@@ -283,8 +437,11 @@ export class RealtimeRenderer {
 		const size = bounds.isEmpty() ? new Vector3( 10, 10, 10 ) : bounds.getSize( new Vector3() );
 		const span = Math.max( size.x, size.y, size.z, 1e-3 );
 
-		this.aoPass.radius.value = span * 0.04;
-		this.aoPass.thickness.value = span * 0.08;
+		// One world unit is a metre. AO represents nearby contact, not room-wide
+		// shadows; cap its reach at 30 cm even for large studios and ground planes.
+		const radius = MathUtils.clamp( span * 0.015, 0.02, 0.3 );
+		this.aoPass.radius.value = radius;
+		this.aoPass.thickness.value = radius * 0.5;
 		this.ssrPass.maxDistance.value = span * 0.5;
 		this.ssrPass.thickness.value = span * 0.005;
 
@@ -308,9 +465,15 @@ export class RealtimeRenderer {
 		width = Math.max( 1, Math.round( width * scale ) );
 		height = Math.max( 1, Math.round( height * scale ) );
 
-		if ( ! force && width === this._displayWidth && height === this._displayHeight ) return;
+		// A resize by another owner (or a resumed browser) can invalidate the
+		// backing canvas while the CSS dimensions and our cache stay unchanged.
+		const actual = this.renderer.getDrawingBufferSize?.( this._drawingBufferSize );
+		const matchesBuffer = canvas.width === width && canvas.height === height
+			&& ( ! actual || ( actual.x === width && actual.y === height ) );
+		if ( ! force && width === this._displayWidth && height === this._displayHeight && matchesBuffer ) return;
 		this._displayWidth = width;
 		this._displayHeight = height;
+		this.renderer.setPixelRatio?.( 1 );
 		this.renderer.setSize( width, height, false );
 
 	}
@@ -318,8 +481,41 @@ export class RealtimeRenderer {
 	_createLightProxy( source, castShadow, bounds ) {
 
 		const proxy = source.clone();
+		if ( ( source.isSpotLight || source.isDirectionalLight ) && source.target ) proxy.target = new Object3D();
+		this._syncLightProxy( source, proxy, castShadow, bounds );
+		return proxy;
+
+	}
+
+	_syncLightProxy( source, proxy, castShadow, bounds ) {
+
+		// Light.copy() replaces its shadow, shadow camera and target. Their UUIDs
+		// key WebGPU node/uniform caches, so retain those objects across edits/cuts.
 		proxy.userData = { ...source.userData, [ RASTER_PROXY_KEY ]: source.uuid };
+		proxy.name = source.name;
+		proxy.visible = this._stableLightInventory || source.visible;
+		proxy.renderOrder = source.renderOrder;
+		proxy.frustumCulled = source.frustumCulled;
+		proxy.up.copy( source.up );
 		proxy.layers.set( 0 );
+		for ( const key of [ 'distance', 'decay', 'angle', 'penumbra', 'width', 'height', 'map' ] ) if ( key in source ) proxy[ key ] = source[ key ];
+		if ( source.isHemisphereLight ) proxy.groundColor.copy( source.groundColor );
+		if ( source.shadow && proxy.shadow ) {
+
+			// Preserve authored fields that source.clone() previously refreshed;
+			// the renderer's existing raster policy overrides bias/range below.
+			proxy.shadow.camera.copy( source.shadow.camera, false );
+			proxy.shadow.intensity = source.shadow.intensity;
+			proxy.shadow.blurSamples = source.shadow.blurSamples;
+			proxy.shadow.biasNode = source.shadow.biasNode;
+			if ( source.shadow.isSpotLightShadow ) {
+
+				proxy.shadow.focus = source.shadow.focus;
+				proxy.shadow.aspect = source.shadow.aspect;
+
+			}
+
+		}
 
 		source.updateWorldMatrix( true, false );
 		source.getWorldPosition( proxy.position );
@@ -336,17 +532,17 @@ export class RealtimeRenderer {
 
 		if ( ( source.isSpotLight || source.isDirectionalLight ) && source.target ) {
 
-			const target = new Object3D();
 			source.target.updateWorldMatrix( true, false );
-			source.target.getWorldPosition( target.position );
-			target.userData[ RASTER_PROXY_KEY ] = source.uuid;
-			proxy.target = target;
+			source.target.getWorldPosition( proxy.target.position );
+			proxy.target.userData[ RASTER_PROXY_KEY ] = source.uuid;
 
 		}
 
 		this._applyEmission( source, proxy );
+		if ( this._stableLightInventory && ! source.visible ) proxy.intensity = 0;
 		this._configureLightShadow( proxy, castShadow, bounds );
-		return proxy;
+		proxy.updateMatrix();
+		proxy.target?.updateMatrix();
 
 	}
 
@@ -485,14 +681,18 @@ export class RealtimeRenderer {
 
 	_removeLightProxies() {
 
-		for ( const object of this.lightProxies ) {
-
-			object.removeFromParent();
-			object.shadow?.dispose?.();
-
-		}
-
+		for ( const proxy of this._lightProxyBySource.values() ) this._disposeLightProxy( proxy );
+		this._lightProxyBySource.clear();
 		this.lightProxies.length = 0;
+
+	}
+
+	_disposeLightProxy( proxy ) {
+
+		proxy.removeFromParent();
+		proxy.target?.removeFromParent();
+		if ( typeof proxy.dispose === 'function' ) proxy.dispose();
+		else proxy.shadow?.dispose?.();
 
 	}
 

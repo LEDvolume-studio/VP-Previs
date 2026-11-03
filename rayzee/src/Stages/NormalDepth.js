@@ -6,9 +6,9 @@ import { RenderStage, StageExecutionMode } from '../Pipeline/RenderStage.js';
 import { MAX_STORAGE_TEXTURE_SIZE } from '../EngineDefaults.js';
 import { Ray, HitInfo, RayTracingMaterial, UVCache } from '../TSL/Struct.js';
 import { traverseBVH } from '../TSL/BVHTraversal.js';
-import { cameraRayDirection } from '../TSL/CameraRay.js';
+import { cameraRayDirection, cameraClipDistance } from '../TSL/CameraRay.js';
 import { getMaterial } from '../TSL/Common.js';
-import { computeUVCache, processNormal, processBump, triangleUVTangent, buildBucketTextureNodes, refreshBucketTextureNodes, setMaterialBucketTextures } from '../TSL/TextureSampling.js';
+import { computeUVCache, processNormal, processBump, processMetalnessRoughness, triangleUVTangent, buildBucketTextureNodes, refreshBucketTextureNodes, setMaterialBucketTextures } from '../TSL/TextureSampling.js';
 
 /**
  * NormalDepth — primary-ray G-buffer for SVGF gates.
@@ -29,9 +29,10 @@ import { computeUVCache, processNormal, processBump, triangleUVTangent, buildBuc
  * map, recomputed from the SAME deterministic hit — no extra ray) so the
  * spatial denoiser's edge-stop can see normal-map detail the flat geometric
  * normal hides. Deterministic ⇒ jitter-free, so it's safe for the gates.
+ * Its .w is the sampled material roughness (NRD's normal+roughness guide).
  *
  * Publishes: pathtracer:normalDepth, pathtracer:prevNormalDepth,
- *            pathtracer:shadingNormal
+ *            pathtracer:shadingNormal (rgb = shading normal·0.5+0.5, a = roughness)
  */
 export class NormalDepth extends RenderStage {
 
@@ -51,6 +52,7 @@ export class NormalDepth extends RenderStage {
 		this.cameraProjectionMatrixInverse = uniform( new Matrix4(), 'mat4' );
 		// Mirrored from the path tracer each frame — these rays must use the same camera model
 		// as the colour buffer or the denoiser's normal/depth edge-stops fight the image.
+		this.cameraClipStart = uniform( 0, 'float' );
 		this.cameraProjection = uniform( 0, 'int' );
 		this.panoLonRange = uniform( new Vector2(), 'vec2' );
 		this.panoLatRange = uniform( new Vector2(), 'vec2' );
@@ -166,8 +168,9 @@ export class NormalDepth extends RenderStage {
 
 		if ( pt.triangleStorageAttr && ! this._triStorageNode ) {
 
+			// uvec4, matching PathTracerStage: packed lanes must keep their exact bit pattern.
 			this._triStorageNode = storage(
-				pt.triangleStorageAttr, 'vec4', pt.triangleStorageAttr.count
+				pt.triangleStorageAttr, 'uvec4', pt.triangleStorageAttr.count
 			).toReadOnly();
 
 		}
@@ -232,7 +235,8 @@ export class NormalDepth extends RenderStage {
 					uv, camWorldMat, camProjInvMat,
 					this.cameraProjection, this.panoLonRange, this.panoLatRange, this.panoLevelHorizon
 				);
-				const rayOrigin = vec3( camWorldMat[ 3 ] );
+				const clipAlong = cameraClipDistance( rayDirWorld, this.cameraClipStart, camWorldMat, this.cameraProjection ).toVar();
+				const rayOrigin = vec3( camWorldMat[ 3 ] ).add( rayDirWorld.mul( clipAlong ) );
 
 				const ray = Ray( { origin: rayOrigin, direction: rayDirWorld } );
 				const hit = HitInfo.wrap( traverseBVH( ray, bvhStorage, triStorage ) );
@@ -241,7 +245,7 @@ export class NormalDepth extends RenderStage {
 				// Clamp to the max finite HalfFloat: a hit farther than 65504 units would otherwise
 				// round to +Inf in the f16 texture (on backends that don't clamp), reintroducing the
 				// Inf-Inf=NaN in the denoiser depth weights that the finite miss-sentinel avoids.
-				const depth = min( hit.dst, float( 65504.0 ) );
+				const depth = min( hit.dst.add( clipAlong ), float( 65504.0 ) );
 
 				const result = hit.didHit.select(
 					vec4( encodedNormal, depth ),
@@ -257,6 +261,7 @@ export class NormalDepth extends RenderStage {
 				// Shading normal: perturb the geometric normal by the normal/bump map
 				// from the SAME hit (deterministic UV → jitter-free). Miss → geo default.
 				const shadingNormal = hit.normal.toVar();
+				const roughness = float( 1.0 ).toVar();
 				If( hit.didHit, () => {
 
 					const material = RayTracingMaterial.wrap(
@@ -268,18 +273,23 @@ export class NormalDepth extends RenderStage {
 					const uvTangent = vec4( 0.0 ).toVar();
 					If( material.normalMapIndex.greaterThanEqual( int( 0 ) ), () => {
 
-						uvTangent.assign( triangleUVTangent( triStorage, hit.triangleIndex, hit.normal, material.normalTransform ) );
+						uvTangent.assign( triangleUVTangent(
+							triStorage, hit.triangleIndex, hit.normal, material.normalTransform,
+							bvhStorage, hit.instanceLeaf
+						) );
 
 					} );
 
 					const mapped = processNormal( hit.normal, material, uvCache, uvTangent ).toVar();
 					shadingNormal.assign( processBump( mapped, material, uvCache ) );
+					// Same floor the Shade kernel applies before shading.
+					roughness.assign( processMetalnessRoughness( material, uvCache ).y.clamp( 0.05, 1.0 ) );
 
 				} );
 
 				const shadingResult = hit.didHit.select(
-					vec4( shadingNormal.mul( 0.5 ).add( 0.5 ), depth ),
-					vec4( 0.0, 0.0, 0.0, float( 65504.0 ) )
+					vec4( shadingNormal.mul( 0.5 ).add( 0.5 ), roughness ),
+					vec4( 0.0, 0.0, 0.0, 1.0 )
 				);
 
 				textureStore(
@@ -318,6 +328,7 @@ export class NormalDepth extends RenderStage {
 			this.cameraProjection.value = pt.uniforms.get( 'cameraProjection' ).value;
 			this.panoLonRange.value.copy( pt.uniforms.get( 'panoLonRange' ).value );
 			this.panoLatRange.value.copy( pt.uniforms.get( 'panoLatRange' ).value );
+			this.cameraClipStart.value = pt.uniforms.get( 'cameraClipStart' ).value;
 			this.panoLevelHorizon.value = pt.uniforms.get( 'panoLevelHorizon' ).value;
 
 		}

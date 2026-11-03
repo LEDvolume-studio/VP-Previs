@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
-import { DEFAULT_STATE, CAMERA_PRESETS, ASVGF_QUALITY_PRESETS, SKY_PRESETS, SSS_PRESETS, translucencyToScale, computeOutputDimensions } from '@/Constants';
+import { DEFAULT_STATE, CAMERA_PRESETS, ASVGF_QUALITY_PRESETS, NRD_QUALITY_PRESETS, SKY_PRESETS, SSS_PRESETS, translucencyToScale, computeOutputDimensions } from '@/Constants';
 import { ENGINE_DEFAULTS, PRODUCTION_RENDER_CONFIG, INTERACTIVE_RENDER_CONFIG, VideoRenderManager, deriveAlphaMode } from 'rayzee';
 import { getApp } from '@/lib/appProxy';
 import { VideoEncoderPipeline, checkCodecSupport } from '@/lib/VideoEncoder';
 import { LEDVideoManager } from '@/services/LEDVideoManager';
+import { SENSOR_PRESETS, sensorDimensionsFrom } from '@/utils/cameraSensor';
 
 /**
  * Debounce utility - delays function execution until after wait time has elapsed
@@ -54,6 +55,10 @@ const useStore = create( set => ( {
 	selectedObject: null,
 	setSelectedObject: obj => set( { selectedObject: obj } ),
 
+	// Set when an archive is too large to load whole and the user must pick one part of it.
+	archivePrompt: null,
+	setArchivePrompt: prompt => set( { archivePrompt: prompt } ),
+
 	// Transform controls
 	transformMode: 'translate',
 	transformSpace: 'world',
@@ -70,7 +75,7 @@ const useStore = create( set => ( {
 		false
 	),
 
-	loading: { isLoading: false, progress: 0, title: '', status: '', loadedBytes: null, totalBytes: null, canCancel: false },
+	loading: { isLoading: false, progress: 0, title: '', status: '', loadedBytes: null, totalBytes: null, canCancel: false, failed: false },
 	setLoading: state => set( s => ( { loading: { ...s.loading, ...state } } ) ),
 	stats: { samples: 0, timeElapsed: 0, memoryUsed: 0, memoryPeak: 0 },
 	setStats: stats => set( { stats } ),
@@ -89,7 +94,7 @@ const useStore = create( set => ( {
 	setCompletionReason: val => set( { completionReason: val } ),
 	isRendering: true,
 	setIsRendering: val => set( { isRendering: val } ),
-	resetLoading: () => set( { loading: { isLoading: false, progress: 0, title: '', status: '', loadedBytes: null, totalBytes: null, canCancel: false } } ),
+	resetLoading: () => set( { loading: { isLoading: false, progress: 0, title: '', status: '', loadedBytes: null, totalBytes: null, canCancel: false, failed: false } } ),
 	appMode: 'preview',
 	setAppMode: mode => set( { appMode: mode } ),
 	activeTab: 'pathtracer',
@@ -284,7 +289,21 @@ const usePathTracerStore = create( ( set, get ) => ( {
 	GIIntensity: DEFAULT_STATE.globalIlluminationIntensity,
 	backgroundIntensity: DEFAULT_STATE.backgroundIntensity,
 
+	// Which model the AI upscaler runs. App-local: 'dlss' is fixed 2x and needs a denoised source.
+	upscalerBackend: 'esrgan',
+
+	// Neural rendering (DLSS-NR): a detail pass on the traced image, before any upscale.
+	neuralRendering: false,
+	nrIntensity: 1,
+	nrLocalTone: 1,
+	nrLocalStructure: 1,
+	// 0 keeps the renderer's own chroma. See DLSS_NR_COLOR_STRENGTH.
+	nrColorStrength: 0,
+
 	showInspector: false,
+	// Effective engine mode. This can temporarily differ from the saved preference
+	// above when LED video playback requires the raster renderer.
+	pathTracerActive: DEFAULT_STATE.enablePathTracer,
 
 	// Auto-exposure computed values (updated in real-time by AutoExposure)
 	currentAutoExposure: null,
@@ -293,6 +312,7 @@ const usePathTracerStore = create( ( set, get ) => ( {
 	// Simple setters
 	setMaxSamples: val => set( { maxSamples: val } ),
 	setEnablePathTracer: val => set( { enablePathTracer: val } ),
+	setPathTracerActive: val => set( { pathTracerActive: val } ),
 	setEnableAccumulation: val => set( { enableAccumulation: val } ),
 	setBounces: val => set( { bounces: val } ),
 	setEnableEmissiveTriangleSampling: val => set( { enableEmissiveTriangleSampling: val } ),
@@ -312,6 +332,8 @@ const usePathTracerStore = create( ( set, get ) => ( {
 	setEnableUpscaler: val => set( { enableUpscaler: val } ),
 	setUpscalerScale: val => set( { upscalerScale: val } ),
 	setUpscalerQuality: val => set( { upscalerQuality: val } ),
+	setUpscalerBackend: val => set( { upscalerBackend: val } ),
+	setNeuralRendering: val => set( { neuralRendering: val } ),
 	setUpscalerHdr: val => set( { upscalerHdr: val } ),
 	setExposure: val => set( { exposure: val } ),
 	setSaturation: val => set( { saturation: val } ),
@@ -425,6 +447,59 @@ const usePathTracerStore = create( ( set, get ) => ( {
 			} );
 
 		},
+		false
+	),
+
+	// NRD (ReBLUR) handlers. Presets rewrite the slider state so the UI shows what the engine runs.
+	handleNrdQualityPresetChange: handleChange(
+		val => set( { nrdQualityPreset: val } ),
+		( val, app ) => {
+
+			if ( ! NRD_QUALITY_PRESETS[ val ] ) return;
+
+			app.denoisingManager.applyNRDPreset( val );
+			// Mirror the values the engine actually resolved, so the sliders can't drift from it.
+			const live = app.stages.nrd?.settings;
+			if ( live ) set( {
+				nrdMaxAccumulatedFrameNum: live.maxAccumulatedFrameNum,
+				nrdMaxBlurRadius: live.maxBlurRadius,
+				nrdPrepassBlurRadius: live.prepassBlurRadius,
+				nrdAntiFirefly: live.enableAntiFirefly,
+			} );
+			// Hard reset drops the denoiser history built under the old settings.
+			app.reset();
+
+		},
+		false
+	),
+
+	handleNrdDebugModeChange: handleChange(
+		val => set( { nrdDebugMode: parseInt( val ) } ),
+		( val, app ) => app.denoisingManager.setNRDDebugMode( parseInt( val ) ),
+		false
+	),
+
+	handleNrdMaxAccumulatedFrameNumChange: handleChange(
+		val => set( { nrdMaxAccumulatedFrameNum: Array.isArray( val ) ? val[ 0 ] : val } ),
+		( val, app ) => app.denoisingManager.setNRDParams( { maxAccumulatedFrameNum: Array.isArray( val ) ? val[ 0 ] : val } ),
+		false
+	),
+
+	handleNrdMaxBlurRadiusChange: handleChange(
+		val => set( { nrdMaxBlurRadius: Array.isArray( val ) ? val[ 0 ] : val } ),
+		( val, app ) => app.denoisingManager.setNRDParams( { maxBlurRadius: Array.isArray( val ) ? val[ 0 ] : val } ),
+		false
+	),
+
+	handleNrdPrepassBlurRadiusChange: handleChange(
+		val => set( { nrdPrepassBlurRadius: Array.isArray( val ) ? val[ 0 ] : val } ),
+		( val, app ) => app.denoisingManager.setNRDParams( { prepassBlurRadius: Array.isArray( val ) ? val[ 0 ] : val } ),
+		false
+	),
+
+	handleNrdAntiFireflyChange: handleChange(
+		val => set( { nrdAntiFirefly: val } ),
+		( val, app ) => app.denoisingManager.setNRDParams( { enableAntiFirefly: val } ),
 		false
 	),
 
@@ -740,9 +815,22 @@ const usePathTracerStore = create( ( set, get ) => ( {
 		false
 	),
 
+	// Turning the final denoise off takes the neural passes with it. Both need a denoised frame —
+	// on raw Monte-Carlo noise the upscaler measured worse than a plain resize — so leaving their
+	// switches on while the engine silently skipped them would be a lie on the panel.
 	handleEnableOIDNChange: handleChange(
-		val => set( { enableOIDN: val } ),
-		( val, app ) => app.denoisingManager.setOIDNEnabled( val ),
+		val => set( val ? { enableOIDN: val } : { enableOIDN: val, enableUpscaler: false, neuralRendering: false } ),
+		( val, app ) => {
+
+			app.denoisingManager.setOIDNEnabled( val );
+			if ( ! val ) {
+
+				app.denoisingManager.setUpscalerEnabled( false );
+				app.denoisingManager.setNeuralRendering( false );
+
+			}
+
+		},
 		false
 	),
 
@@ -764,6 +852,29 @@ const usePathTracerStore = create( ( set, get ) => ( {
 		false
 	),
 
+	handleNeuralRenderingChange: handleChange(
+		val => set( { neuralRendering: val } ),
+		( val, app ) => app.denoisingManager.setNeuralRendering( val, {
+			intensity: get().nrIntensity,
+			localTone: get().nrLocalTone,
+			localStructure: get().nrLocalStructure,
+			colorStrength: get().nrColorStrength,
+		} ),
+		false
+	),
+
+	handleNRSettingChange: ( key, storeKey ) => handleChange(
+		val => set( { [ storeKey ]: val } ),
+		( val, app ) => app.denoisingManager.setNeuralRendering( get().neuralRendering, { [ key ]: val } ),
+		false
+	),
+
+	handleUpscalerBackendChange: handleChange(
+		val => set( { upscalerBackend: val } ),
+		( val, app ) => app.denoisingManager.setUpscalerBackend( val ),
+		false
+	),
+
 	handleUpscalerQualityChange: handleChange(
 		val => set( { upscalerQuality: val } ),
 		( val, app ) => app.denoisingManager.setUpscalerQuality( val ),
@@ -773,7 +884,9 @@ const usePathTracerStore = create( ( set, get ) => ( {
 	// Denoiser strategy and EdgeAware filter handlers
 	handleDenoiserStrategyChange: handleChange(
 		val => set( { denoiserStrategy: val, enableASVGF: val === 'asvgf' } ),
-		( val, app ) => app.denoisingManager.setStrategy( val, get().asvgfQualityPreset ),
+		( val, app ) => app.denoisingManager.setStrategy(
+			val, val === 'nrd' ? get().nrdQualityPreset : get().asvgfQualityPreset
+		),
 		false // engine method handles reset internally
 	),
 
@@ -1541,6 +1654,16 @@ const useLightStore = create( set => ( {
 
 					}
 
+				} else if ( prop === 'radius' ) {
+
+					if ( light.isPointLight || light.isSpotLight ) {
+
+						const radius = Number.isFinite( value ) ? Math.max( 0, value ) : 0;
+						light.userData.radius = radius;
+						lights[ idx ].radius = radius;
+
+					}
+
 				} else if ( prop === 'temperature' || prop === 'useTemperature' || prop === 'exposure' ) {
 
 					// Blender-style emission tint/stops — applies to every light type.
@@ -1716,6 +1839,10 @@ const useLightStore = create( set => ( {
 const useCameraStore = create( ( set, get ) => ( {
 	...DEFAULT_STATE,
 	activePreset: "product",
+	sensorPreset: 'full-frame',
+	sensorWidth: SENSOR_PRESETS[ 'full-frame' ].width,
+	sensorHeight: SENSOR_PRESETS[ 'full-frame' ].height,
+	frameOverlayRatio: '16:9',
 	cameraNames: [],
 	selectedCameraIndex: 0,
 	focusMode: false,
@@ -1742,6 +1869,9 @@ const useCameraStore = create( ( set, get ) => ( {
 		if ( e.focalLength !== undefined ) next.focalLength = e.focalLength;
 		if ( e.apertureScale !== undefined ) next.apertureScale = e.apertureScale;
 		if ( e.anamorphicRatio !== undefined ) next.anamorphicRatio = e.anamorphicRatio;
+		next.dofMode = e.dofMode ?? 'legacy';
+		next.dofBlur = e.dofBlur ?? DEFAULT_STATE.dofBlur;
+		next.unitsPerMetre = e.unitsPerMetre ?? DEFAULT_STATE.unitsPerMetre;
 		if ( e.autoFocusMode !== undefined ) next.autoFocusMode = e.autoFocusMode;
 		if ( e.afScreenPoint !== undefined ) next.afScreenPoint = e.afScreenPoint;
 		return next;
@@ -1750,12 +1880,68 @@ const useCameraStore = create( ( set, get ) => ( {
 	setFocusMode: mode => set( { focusMode: mode } ),
 	setSelectMode: mode => set( { selectMode: mode } ),
 	setAutoFocusDistance: val => set( { focusDistance: val } ),
+	setLensState: ( fov, focalLength ) => set( { fov, focalLength } ),
 	setFov: val => set( { fov: val, activePreset: "custom" } ),
 	setFocusDistance: val => set( { focusDistance: val, activePreset: "custom" } ),
 	setAperture: val => set( { aperture: val, activePreset: "custom" } ),
 	setFocalLength: val => set( { focalLength: val, activePreset: "custom" } ),
 	setEnableDOF: val => set( { enableDOF: val, activePreset: "custom" } ),
 	setZoomToCursor: val => set( { zoomToCursor: val } ),
+	setDollyZoom: val => set( { dollyZoom: val } ),
+	setFrameOverlayRatio: val => set( { frameOverlayRatio: val } ),
+
+	applySensorSettings: focalLengthOverride => {
+
+		const app = getApp();
+		if ( ! app?.cameraManager?.active ) return;
+		const { sensorWidth, focalLength } = get();
+		const nextFocalLength = Number.isFinite( focalLengthOverride ) ? focalLengthOverride : focalLength;
+		const camera = app.cameraManager.active;
+		camera.filmGauge = sensorWidth;
+		camera.setFocalLength( nextFocalLength );
+
+		const sourceCamera = app.cameraManager.cameras?.[ app.cameraManager.currentCameraIndex ];
+		if ( sourceCamera && sourceCamera !== camera ) {
+
+			sourceCamera.filmGauge = sensorWidth;
+			sourceCamera.fov = camera.fov;
+			sourceCamera.updateProjectionMatrix();
+
+		}
+
+		// Sensor changes preserve the physical focal length, so RenderSettings sees the
+		// same value and deliberately skips its normal reset. Reset explicitly to wake
+		// an idle path tracer and upload the changed projection matrix on its next frame.
+		app.settings.set( 'focalLength', camera.getFocalLength(), { reset: false } );
+		app.reset?.();
+		set( { fov: camera.fov, focalLength: camera.getFocalLength() } );
+
+	},
+
+	handleSensorPresetChange: key => {
+
+		if ( key === 'custom' ) {
+
+			set( { sensorPreset: 'custom' } );
+			return;
+
+		}
+
+		const preset = SENSOR_PRESETS[ key ];
+		if ( ! preset ) return;
+		set( { sensorPreset: key, sensorWidth: preset.width, sensorHeight: preset.height } );
+		get().applySensorSettings();
+
+	},
+
+	handleSensorDimensionChange: ( axis, value ) => {
+
+		const dimensions = sensorDimensionsFrom( axis, value );
+		if ( ! dimensions ) return;
+		set( { ...dimensions, sensorPreset: 'custom' } );
+		get().applySensorSettings();
+
+	},
 	setPreset: key => {
 
 		if ( key === "custom" ) return;
@@ -1805,6 +1991,39 @@ const useCameraStore = create( ( set, get ) => ( {
 
 	},
 
+	handleDollyZoomChange: val => set( { dollyZoom: val } ),
+
+	handleDofModeChange: mode => {
+
+		if ( ! [ 'legacy', 'physical', 'look' ].includes( mode ) ) return;
+		const app = getApp();
+		const scale = app?.assetLoader?.getSceneScale() || 1;
+		const worldFocus = app?.settings.get?.( 'focusDistance' )
+			?? get().focusDistance * ( get().dofMode === 'legacy' ? scale : 1 );
+		set( { dofMode: mode, focusDistance: mode === 'legacy' ? worldFocus / scale : worldFocus, activePreset: 'custom' } );
+		app?.settings.set( 'dofMode', mode );
+
+	},
+
+	handleDofBlurChange: value => {
+
+		const numeric = Number( Array.isArray( value ) ? value[ 0 ] : value );
+		if ( ! Number.isFinite( numeric ) ) return;
+		const dofBlur = Math.min( 1, Math.max( 0, numeric ) );
+		set( { dofBlur, activePreset: 'custom' } );
+		getApp()?.settings.set( 'dofBlur', dofBlur );
+
+	},
+
+	handleUnitsPerMetreChange: value => {
+
+		const unitsPerMetre = Number( value );
+		if ( ! Number.isFinite( unitsPerMetre ) || unitsPerMetre <= 0 ) return;
+		set( { unitsPerMetre, activePreset: 'custom' } );
+		getApp()?.settings.set( 'unitsPerMetre', unitsPerMetre );
+
+	},
+
 	handleFocusDistanceChange: val => {
 
 		set( { focusDistance: val, activePreset: "custom", autoFocusMode: 'manual' } );
@@ -1812,7 +2031,7 @@ const useCameraStore = create( ( set, get ) => ( {
 		if ( app ) {
 
 			const scale = app.assetLoader?.getSceneScale() || 1.0;
-			app.settings.set( 'focusDistance', val * scale );
+			app.settings.set( 'focusDistance', get().dofMode === 'legacy' ? val * scale : val );
 			app.cameraManager.setAutoFocusMode( 'manual' );
 			app.reset();
 
@@ -1893,21 +2112,48 @@ const useCameraStore = create( ( set, get ) => ( {
 		}
 
 		const preset = CAMERA_PRESETS[ key ];
+		if ( ! preset ) return;
+		if ( get().dofMode !== 'legacy' ) {
+
+			// Sensor and focal-length controls own framing. New DOF presets only
+			// change aperture/blur, so choosing a look does not reframe a saved view.
+			const updates = {
+				aperture: preset.aperture,
+				apertureScale: preset.apertureScale ?? 1,
+				anamorphicRatio: preset.anamorphicRatio ?? 1,
+				dofBlur: preset.dofBlur ?? DEFAULT_STATE.dofBlur,
+			};
+			set( { ...updates, activePreset: key } );
+			getApp()?.settings.setMany( updates );
+			return;
+
+		}
+
 		const presetApertureScale = preset.apertureScale ?? 1.0;
 		const presetAnamorphicRatio = preset.anamorphicRatio ?? 1.0;
-		set( { ...preset, apertureScale: presetApertureScale, anamorphicRatio: presetAnamorphicRatio, activePreset: key } );
+		let presetFov = preset.fov;
+		let presetFocalLength = preset.focalLength;
 
 		const app = getApp();
 		if ( app ) {
 
 			const isAutoFocus = get().autoFocusMode === 'auto';
+			const camera = app.cameraManager.active;
 
-			app.cameraManager.active.fov = preset.fov;
-			app.cameraManager.active.updateProjectionMatrix();
+			camera.setFocalLength( preset.focalLength );
+			presetFov = camera.fov;
+			presetFocalLength = camera.getFocalLength();
+			const sourceCamera = app.cameraManager.cameras?.[ app.cameraManager.currentCameraIndex ];
+			if ( sourceCamera && sourceCamera !== camera ) {
+
+				sourceCamera.fov = camera.fov;
+				sourceCamera.updateProjectionMatrix();
+
+			}
 
 			const updates = {
 				aperture: preset.aperture,
-				focalLength: preset.focalLength,
+				focalLength: presetFocalLength,
 				apertureScale: presetApertureScale,
 				anamorphicRatio: presetAnamorphicRatio,
 			};
@@ -1924,32 +2170,57 @@ const useCameraStore = create( ( set, get ) => ( {
 
 		}
 
+		set( {
+			...preset,
+			fov: presetFov,
+			focalLength: presetFocalLength,
+			apertureScale: presetApertureScale,
+			anamorphicRatio: presetAnamorphicRatio,
+			activePreset: key,
+		} );
+
 	},
 
-	handleFovChange: val => {
+	handleFovChange: value => {
+
+		const val = Number( Array.isArray( value ) ? value[ 0 ] : value );
+		if ( ! Number.isFinite( val ) ) return;
+		let focalLength = get().focalLength;
 
 		const app = getApp();
 		if ( app ) {
 
-			const oldFov = app.cameraManager.active.fov;
-			const target = app.cameraManager.controls.target.clone();
-			const oldDistance = app.cameraManager.active.position.distanceTo( target );
+			const camera = app.cameraManager.active;
+			const oldFov = camera.fov;
+			if ( get().dollyZoom ) {
 
-			// Keep perceived size constant: distance * tan(fov/2) = constant
-			const newDistance = oldDistance * Math.tan( oldFov * Math.PI / 360 ) / Math.tan( val * Math.PI / 360 );
+				const target = app.cameraManager.controls.target.clone();
+				const oldDistance = camera.position.distanceTo( target );
+				// Keep perceived size constant: distance * tan(fov/2) = constant.
+				const newDistance = oldDistance * Math.tan( oldFov * Math.PI / 360 ) / Math.tan( val * Math.PI / 360 );
+				const direction = camera.position.clone().sub( target ).normalize();
+				camera.position.copy( target ).addScaledVector( direction, newDistance );
 
-			// Move camera along the orbit direction
-			const direction = app.cameraManager.active.position.clone().sub( target ).normalize();
-			app.cameraManager.active.position.copy( target ).addScaledVector( direction, newDistance );
+			}
 
-			app.cameraManager.active.fov = val;
-			app.cameraManager.active.updateProjectionMatrix();
+			camera.fov = val;
+			camera.updateProjectionMatrix();
+			focalLength = camera.getFocalLength();
+
+			const sourceCamera = app.cameraManager.cameras?.[ app.cameraManager.currentCameraIndex ];
+			if ( sourceCamera && sourceCamera !== camera ) {
+
+				sourceCamera.fov = camera.fov;
+				sourceCamera.updateProjectionMatrix();
+
+			}
+
 			app.cameraManager.controls.update();
-			app.reset();
+			app.settings.set( 'focalLength', focalLength );
 
 		}
 
-		set( { fov: val, activePreset: "custom" } );
+		set( { fov: val, focalLength, activePreset: "custom" } );
 
 	},
 
@@ -1960,16 +2231,46 @@ const useCameraStore = create( ( set, get ) => ( {
 
 	},
 
-	handleFocalLengthChange: val => {
+	handleFocalLengthChange: value => {
 
-		set( { focalLength: val, activePreset: "custom" } );
+		const val = Number( Array.isArray( value ) ? value[ 0 ] : value );
+		if ( ! Number.isFinite( val ) || val <= 0 ) return;
+		let fov = get().fov;
+		let focalLength = val;
 		const app = getApp();
 		if ( app ) {
 
-			app.settings.set( 'focalLength', val );
-			if ( val <= 0 ) app.settings.set( 'aperture', 16.0 );
+			const camera = app.cameraManager.active;
+			const oldFov = camera.fov;
+
+			camera.setFocalLength( val );
+			fov = camera.fov;
+			focalLength = camera.getFocalLength();
+
+			if ( get().dollyZoom ) {
+
+				const target = app.cameraManager.controls.target.clone();
+				const oldDistance = camera.position.distanceTo( target );
+				const newDistance = oldDistance * Math.tan( oldFov * Math.PI / 360 ) / Math.tan( fov * Math.PI / 360 );
+				const direction = camera.position.clone().sub( target ).normalize();
+				camera.position.copy( target ).addScaledVector( direction, newDistance );
+
+			}
+
+			const sourceCamera = app.cameraManager.cameras?.[ app.cameraManager.currentCameraIndex ];
+			if ( sourceCamera && sourceCamera !== camera ) {
+
+				sourceCamera.fov = camera.fov;
+				sourceCamera.updateProjectionMatrix();
+
+			}
+
+			app.cameraManager.controls.update();
+			app.settings.set( 'focalLength', focalLength );
 
 		}
+
+		set( { fov, focalLength, activePreset: "custom" } );
 
 	},
 

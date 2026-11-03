@@ -1,8 +1,12 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import StudentDefaultDialog from './StudentDefaultDialog';
 import { useToast } from "@/hooks/use-toast";
 import { getApp } from '@/lib/appProxy';
 import { projectSession } from '@/services/projects/ProjectSession';
 import { useProjectStore } from '@/services/projects/projectStore';
+import { undoManager } from '@/services/UndoManager';
+import { useUndoState } from '@/hooks/useUndoState';
+import { useStore } from '@/store';
 import {
 	Menubar,
 	MenubarContent,
@@ -15,12 +19,53 @@ import {
 const MenuBar = ( { onOpenImportModal } ) => {
 
 	const fileInputRef = useRef( null );
+	const [ studentDefaultOpen, setStudentDefaultOpen ] = useState( false );
 	const { toast } = useToast();
 	const setManagerOpen = useProjectStore( state => state.setManagerOpen );
+	const defaultProjectId = useProjectStore( state => state.defaultProjectId );
+	const { canUndo, canRedo, undoLabel, redoLabel } = useUndoState();
+	const runHistoryOperation = operation => {
+
+		operation().catch( error => toast( {
+			title: 'History operation failed',
+			description: error.message,
+			variant: 'destructive',
+		} ) );
+
+	};
 
 	const handleOpenFile = () => {
 
 		fileInputRef.current?.click();
+
+	};
+
+	const handleNewProject = async () => {
+
+		try {
+
+			await projectSession.create();
+
+		} catch ( error ) {
+
+			toast( { title: 'Could not create project', description: error.message, variant: 'destructive' } );
+
+		}
+
+	};
+
+	const handleOpenDefaultProject = async () => {
+
+		try {
+
+			const { getAdminPresetService } = await import( '@/services/presets/AdminPresetService.js' );
+			await getAdminPresetService().openDefaultProject();
+
+		} catch ( error ) {
+
+			toast( { title: 'Could not open default project', description: error.message, variant: 'destructive' } );
+
+		}
 
 	};
 
@@ -46,7 +91,7 @@ const MenuBar = ( { onOpenImportModal } ) => {
 		if ( ! file ) return;
 
 		// Validate file type
-		const supportedFormats = [ '.glb', '.gltf', '.fbx', '.obj', '.stl', '.ply', '.dae', '.3mf', '.usd', '.usda', '.usdc', '.usdz', '.zip' ];
+		const supportedFormats = [ '.glb', '.gltf', '.fbx', '.obj', '.stl', '.ply', '.dae', '.3mf', '.usd', '.usda', '.usdc', '.usdz', '.zip', '.tar', '.tgz', '.tar.gz', '.gz' ];
 		const fileName = file.name.toLowerCase();
 		const isSupported = supportedFormats.some( format => fileName.endsWith( format ) );
 
@@ -54,7 +99,7 @@ const MenuBar = ( { onOpenImportModal } ) => {
 
 			toast( {
 				title: "Invalid File Type",
-				description: "Please select a supported 3D model file (.glb, .gltf, .fbx, .obj, .stl, .ply, .dae, .3mf, .usd, .usda, .usdc, .usdz) or a .zip (incl. pbrt scenes)",
+				description: "Please select a supported 3D model file (.glb, .gltf, .fbx, .obj, .stl, .ply, .dae, .3mf, .usd, .usda, .usdc, .usdz) or an archive: .zip, .tar, .tar.gz, .tgz (incl. pbrt scenes)",
 				variant: "destructive",
 			} );
 			return;
@@ -85,7 +130,13 @@ const MenuBar = ( { onOpenImportModal } ) => {
 
 		} catch ( error ) {
 
-			toast( error?.code === 'LOAD_IN_PROGRESS'
+			if ( error?.code === 'ARCHIVE_NEEDS_ELEMENT' ) {
+
+				useStore.getState().setArchivePrompt( {
+					file, elements: error.elements, totalBytes: error.totalBytes
+				} );
+
+			} else toast( error?.code === 'LOAD_IN_PROGRESS'
 				? {
 					title: "Still Loading",
 					description: "Wait for the current load to finish, then open the file again.",
@@ -107,10 +158,11 @@ const MenuBar = ( { onOpenImportModal } ) => {
 
 	return (
 		<>
+			<StudentDefaultDialog open={studentDefaultOpen} onOpenChange={setStudentDefaultOpen} />
 			<input
 				ref={fileInputRef}
 				type="file"
-				accept=".glb,.gltf,.fbx,.obj,.stl,.ply,.dae,.3mf,.usd,.usda,.usdc,.usdz,.zip"
+				accept=".glb,.gltf,.fbx,.obj,.stl,.ply,.dae,.3mf,.usd,.usda,.usdc,.usdz,.zip,.tar,.tgz,.gz"
 				onChange={handleFileSelect}
 				style={{ display: 'none' }}
 			/>
@@ -119,9 +171,16 @@ const MenuBar = ( { onOpenImportModal } ) => {
 					<MenubarTrigger className="text-muted-foreground text-sm font-medium hover:text-foreground">File</MenubarTrigger>
 					<MenubarContent>
 						<MenubarItem onSelect={() => setManagerOpen( true )}>Projects…</MenubarItem>
-						<MenubarItem onSelect={() => projectSession.create()}>New Project</MenubarItem>
+						<MenubarItem onSelect={handleNewProject}>New Project</MenubarItem>
+						<MenubarItem disabled={! defaultProjectId} onSelect={handleOpenDefaultProject}>Open Default Project</MenubarItem>
 						<MenubarItem onSelect={() => projectSession.flush()}>Save Project</MenubarItem>
 						<MenubarItem onSelect={handleSaveAsDefault}>Save Current Scene as Default Project</MenubarItem>
+						<MenubarItem onSelect={() => setStudentDefaultOpen( true )}>Student Default Timeline…</MenubarItem>
+						<MenubarItem onSelect={() => {
+
+							window.location.href = '/admin/users/';
+
+						}}>Students and Projects…</MenubarItem>
 						<MenubarItem onSelect={() => projectSession.importProject()}>Import Project…</MenubarItem>
 						<MenubarItem onSelect={() => projectSession.exportProject()}>Export Project…</MenubarItem>
 						<MenubarSeparator />
@@ -133,8 +192,14 @@ const MenuBar = ( { onOpenImportModal } ) => {
 				<MenubarMenu>
 					<MenubarTrigger className="text-muted-foreground text-sm font-medium hover:text-foreground">Edit</MenubarTrigger>
 					<MenubarContent>
-						<MenubarItem disabled className="flex items-center">Undo</MenubarItem>
-						<MenubarItem disabled className="flex items-center">Redo</MenubarItem>
+						<MenubarItem disabled={! canUndo} onSelect={() => runHistoryOperation( () => undoManager.undo() )} className="flex items-center justify-between gap-6">
+							<span>{undoLabel ? `Undo ${undoLabel}` : 'Undo'}</span>
+							<span className="text-xs text-muted-foreground">⌘Z</span>
+						</MenubarItem>
+						<MenubarItem disabled={! canRedo} onSelect={() => runHistoryOperation( () => undoManager.redo() )} className="flex items-center justify-between gap-6">
+							<span>{redoLabel ? `Redo ${redoLabel}` : 'Redo'}</span>
+							<span className="text-xs text-muted-foreground">⇧⌘Z</span>
+						</MenubarItem>
 						<MenubarSeparator />
 						<MenubarItem disabled className="flex items-center">Copy</MenubarItem>
 						<MenubarItem disabled className="flex items-center">Paste</MenubarItem>

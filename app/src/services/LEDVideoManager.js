@@ -3,6 +3,7 @@ import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { materialEmissive } from 'three/tsl';
 import { EngineEvents } from 'rayzee';
 import { getApp } from '@/lib/appProxy';
+import { createPlateVideo } from './plates/PlateVideo.js';
 
 export const LED_NITS_PER_EMISSION_UNIT = 100;
 export const LED_ROOT_METADATA_KEY = 'rayzeeLED';
@@ -62,36 +63,43 @@ async function readMP4ProbeBytes( file ) {
 
 }
 
-/** Validate the MP4 container, its H.264 sample entry, and baseline browser support. */
+export function getLEDVideoMimeType( file ) {
+
+	if ( file.type ) return file.type;
+	return /\.mov$/i.test( file.name || '' ) ? 'video/quicktime' : 'video/mp4';
+
+}
+
+/** Validate an MP4 or MOV container, its H.264 sample entry, and baseline browser support. */
 export async function validateLEDVideoFile( file ) {
 
-	if ( ! file ) throw new Error( 'Choose an MP4 file.' );
-	if ( ! /\.mp4$/i.test( file.name || '' ) ) throw new Error( 'LED video must use the .mp4 container.' );
-	if ( file.type && file.type !== 'video/mp4' && file.type !== 'application/mp4' ) {
+	if ( ! file ) throw new Error( 'Choose an MP4 or MOV file.' );
+	if ( ! /\.(mp4|mov)$/i.test( file.name || '' ) ) throw new Error( 'LED video must use the .mp4 or .mov container.' );
+	if ( file.type && ! [ 'video/mp4', 'application/mp4', 'video/quicktime' ].includes( file.type ) ) {
 
-		throw new Error( `Expected an MP4 MIME type, received ${file.type}.` );
+		throw new Error( `Expected an MP4 or MOV MIME type, received ${file.type}.` );
 
 	}
 
-	if ( file.size < 16 ) throw new Error( 'The selected MP4 is empty or malformed.' );
+	if ( file.size < 16 ) throw new Error( 'The selected video is empty or malformed.' );
 
 	const bytes = await readMP4ProbeBytes( file );
 	if ( ! containsAscii( bytes.subarray( 0, Math.min( bytes.length, 64 ) ), 'ftyp' ) ) {
 
-		throw new Error( 'The selected file does not contain a valid MP4 ftyp box.' );
+		throw new Error( 'The selected file does not contain a valid MP4 or MOV ftyp box.' );
 
 	}
 
 	if ( ! containsAscii( bytes, 'avc1' ) && ! containsAscii( bytes, 'avc3' ) ) {
 
-		throw new Error( 'This MP4 does not advertise H.264 video (avc1/avc3).' );
+		throw new Error( 'This video does not advertise H.264 video (avc1/avc3).' );
 
 	}
 
 	const probe = document.createElement( 'video' );
 	if ( probe.canPlayType( 'video/mp4; codecs="avc1.42E01E"' ) === '' ) {
 
-		throw new Error( 'This browser does not report H.264/MP4 decoding support.' );
+		throw new Error( 'This browser does not report H.264 video decoding support.' );
 
 	}
 
@@ -590,7 +598,7 @@ export class LEDVideoManagerImpl {
 		record.root.userData[ LED_ROOT_METADATA_KEY ].videoSource = sourceRef || {
 			assetId: globalThis.crypto?.randomUUID?.() || `video-${Date.now()}`,
 			name: file.name,
-			type: file.type || 'video/mp4',
+			type: getLEDVideoMimeType( file ),
 			size: file.size,
 			lastModified: file.lastModified || 0,
 		};
@@ -679,6 +687,58 @@ export class LEDVideoManagerImpl {
 
 	}
 
+	async choosePlate( rootOrId, source, { view = 'front', initialTime = 0, autoplay = true } = {} ) {
+
+		const record = this.getRecord( rootOrId );
+		if ( ! record ) {
+
+			await source.dispose(); throw new Error( 'Choose an LED wall first.' );
+
+		}
+
+		const previousGeneration = record.generation;
+		const video = await createPlateVideo( source, { view, initialTime } );
+		if ( this.getRecord( rootOrId ) !== record || record.generation !== previousGeneration ) {
+
+			video.load(); return false;
+
+		}
+
+		this.releaseMedia( record, { clearDisplay: false } );
+		record.video = video; video.loop = !! record.root.userData[ LED_ROOT_METADATA_KEY ].loop;
+		this.updatePlateReference( record );
+		this.bindVideoEvents( record, record.generation );
+		record.status = 'paused';
+		await this.capturePausedFrame( record );
+		if ( autoplay ) await this.play( rootOrId );
+		this.emit( record ); return true;
+
+	}
+
+	updatePlateReference( record ) {
+
+		const video = record.video, source = video.plateSource, view = video.plateView;
+		const file = source.files[ view ];
+		record.file = new File( [ file ], `${view}-${source.encoding}.mp4`, { type: 'video/mp4' } );
+		record.root.userData[ LED_ROOT_METADATA_KEY ].videoSource = {
+			assetId: `plate-${source.manifest.id}-${view}`, name: `${source.manifest.name}-${view}.mp4`, type: 'video/mp4', size: file.size, lastModified: 0,
+			plateSetId: source.manifest.id, plateView: view, currentTime: video.currentTime,
+		};
+
+	}
+
+	async setPlateView( rootOrId, view ) {
+
+		const record = this.getRecord( rootOrId );
+		if ( ! record?.video?.plateSource ) return;
+		const generation = record.generation;
+		await record.video.setPlateView( view );
+		if ( generation !== record.generation ) return;
+		this.updatePlateReference( record );
+		this.updateRasterVideoFrame( record ); this.invalidateRenderedFrame(); this.emit( record );
+
+	}
+
 	setMissingVideo( rootOrId, sourceRef, message = 'Reconnect this video to restore it.' ) {
 
 		const record = this.getRecord( rootOrId );
@@ -698,6 +758,9 @@ export class LEDVideoManagerImpl {
 		const handler = event => {
 
 			if ( generation !== record.generation ) return;
+			// Publish the selected file with its decoded pixels before autosave or
+			// preset listeners observe a completed frame/seek.
+			if ( video.plateSource && [ 'timeupdate', 'seeked' ].includes( event.type ) && record.root.userData[ LED_ROOT_METADATA_KEY ].videoSource?.plateView !== video.plateView ) this.updatePlateReference( record );
 			switch ( event.type ) {
 
 				case 'loadedmetadata':

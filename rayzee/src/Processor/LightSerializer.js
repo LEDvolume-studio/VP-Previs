@@ -27,6 +27,9 @@ function effectiveEmission( light ) {
 
 }
 
+// A point or spot light's radius (Blender's Radius, USD's SphereLight radius): `userData.radius`, in scene units.
+const lightRadius = ( light ) => Math.max( 0, Number( light.userData?.radius ) || 0 );
+
 export class LightSerializer {
 
 	constructor() {
@@ -211,7 +214,8 @@ export class LightSerializer {
 				em.r, em.g, em.b, // color (3) — incl. temperature tint
 				em.intensity * INV_4PI, // radiant intensity W/sr = power(W)/4π, incl. exposure (1)
 				light.distance || 0.0, // cutoff distance (0 = infinite) (1)
-				light.decay !== undefined ? light.decay : 2.0 // decay exponent (1)
+				light.decay !== undefined ? light.decay : 2.0, // decay exponent (1)
+				lightRadius( light ), // radius: a disc this size facing the lit point, 0 = a point (1)
 			],
 			importance: importance,
 			light: light
@@ -261,7 +265,7 @@ export class LightSerializer {
 				goboIntensity, // signed gobo strength (1)
 				iesIndex, // IES profile index, -1 = none (1)
 				iesIntensity, // IES blend [0,1] (1)
-				0.0, // reserved (1)
+				lightRadius( light ), // radius, as a point light's (1)
 				0.0, // reserved (1) — keeps stride at 20 (vec4 aligned)
 			],
 			importance: importance,
@@ -339,7 +343,7 @@ export class LightSerializer {
 		// Divide flat array lengths by per-light stride to get actual light counts
 		const directionalCount = Math.floor( this.lightData.directional.length / 12 );
 		const areaCount = Math.floor( this.lightData.rectArea.length / 16 );
-		const pointCount = Math.floor( this.lightData.point.length / 9 );
+		const pointCount = Math.floor( this.lightData.point.length / 10 );
 		const spotCount = Math.floor( this.lightData.spot.length / 20 );
 
 		// Update light counts in shader defines

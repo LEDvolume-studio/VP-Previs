@@ -1,4 +1,6 @@
+import { getCameraClipStart } from '../managers/cameraClip.js';
 import { storage } from 'three/tsl';
+import { gpuOnlyStorageAttribute, uploadStorageChunkRange, uploadStorageChunks } from '../TSL/patches.js';
 import { StorageInstancedBufferAttribute } from 'three/webgpu';
 import {
 	NearestFilter, Vector2, Matrix4,
@@ -28,6 +30,10 @@ import { getAssetConfig } from '../AssetConfig.js';
 import { createLogger, fmt } from '../utils/Logger.js';
 
 const log = createLogger( 'pathtracer' );
+
+// How long after the last move the view still counts as moving. Matches CameraOptimizer's own
+// settle delay, so the answer does not change when interaction mode is switched off.
+const VIEW_SETTLE_MS = 100;
 
 /**
  * Data layout constants
@@ -109,17 +115,21 @@ export class PathTracerStage extends RenderStage {
 		// Initialize material data manager
 		this.materialData = new MaterialDataManager( this.sdfs );
 		this.materialData.callbacks.onReset = () => this.reset();
-		// Triangle data carries the per-triangle `side` flag (NORMAL_C.w). The
-		// authoritative CPU array is triangleStorageAttr.array (not sdfs.triangleData,
-		// which isn't populated on the PathTracerApp build path). The patch mutates
-		// the array in place — only a dirty flag is needed for GPU re-upload.
+		// Triangle data carries the per-triangle `side` flag (NORMAL_C.w). The authoritative
+		// CPU copy is `_triangleRecords` when the scene is chunked and triangleStorageAttr.array
+		// otherwise (not sdfs.triangleData, which isn't populated on the PathTracerApp build
+		// path). The patch mutates it in place, then the GPU copy is refreshed.
 		this.materialData.callbacks.getTriangleData = () => ( {
 			array: this.triangleStorageAttr?.array,
+			records: this._triangleRecords,
 			count: this.triangleCount,
 		} );
 		this.materialData.callbacks.onTriangleDataChanged = () => {
 
-			if ( this.triangleStorageAttr ) this.triangleStorageAttr.needsUpdate = true;
+			if ( ! this.triangleStorageAttr ) return;
+			// A chunked attribute owns no CPU array for three.js to re-upload.
+			if ( this._triangleRecords ) uploadStorageChunks( this.renderer, this.triangleStorageAttr, this._triangleRecords.chunks );
+			else this.triangleStorageAttr.needsUpdate = true;
 
 		};
 
@@ -158,6 +168,8 @@ export class PathTracerStage extends RenderStage {
 
 		// Track changes for event emission
 		this.cameraChanged = false;
+		// When the view was last moved, for viewIsChanging.
+		this._lastViewChangeAt = - Infinity;
 
 		// Update completion threshold
 		this.updateCompletionThreshold();
@@ -171,11 +183,13 @@ export class PathTracerStage extends RenderStage {
 
 		// Triangle data (storage buffer for WebGPU)
 		this.triangleStorageAttr = null;
+		this._triangleRecords = null;
 		this.triangleStorageNode = null;
 		this.triangleCount = 0;
 
 		// BVH data (storage buffer for WebGPU)
 		this.bvhStorageAttr = null;
+		this._bvhRecords = null;
 		this.bvhStorageNode = null;
 		this.bvhNodeCount = 0;
 
@@ -602,7 +616,7 @@ export class PathTracerStage extends RenderStage {
 		if ( this.pointLightsData && this.pointLightsData.length > 0 ) {
 
 			this.pointLightsBufferNode.array = Array.from( this.pointLightsData );
-			this.numPointLights.value = Math.floor( this.pointLightsData.length / 9 );
+			this.numPointLights.value = Math.floor( this.pointLightsData.length / 10 );
 
 		} else {
 
@@ -697,6 +711,25 @@ export class PathTracerStage extends RenderStage {
 
 	}
 
+	/**
+	 * Whether the view is being moved right now — the camera or a gizmo — whether or not interaction
+	 * mode is on. Interaction mode answers a narrower question (may quality be reduced) and is a
+	 * switch a host can turn off; what a denoiser needs to know is only whether this frame is about
+	 * to be thrown away by the next move.
+	 */
+	get viewIsChanging() {
+
+		return this.interactionMode || performance.now() - this._lastViewChangeAt < VIEW_SETTLE_MS;
+
+	}
+
+	// Called by the host loop on a frame whose reset came from the view moving.
+	noteViewChanged() {
+
+		this._lastViewChangeAt = performance.now();
+
+	}
+
 	// ===== TEXTURE SETTERS =====
 
 	/**
@@ -704,19 +737,28 @@ export class PathTracerStage extends RenderStage {
 	 * On first call, creates the storage buffer and node.
 	 * On subsequent calls, creates a new attribute with the correct size
 	 * and updates the storage node's value to preserve shader graph references.
-	 * @param {Float32Array} triangleData - Raw triangle data
+	 * @param {Uint32Array} triangleData - Packed triangle records (uvec4 lanes)
 	 * @param {number} triangleCount - Number of triangles
 	 */
 	setTriangleData( triangleData, triangleCount ) {
 
 		if ( ! triangleData ) return;
 
-		const vec4Count = triangleData.length / 4;
+		// Past the ~2 GB array cap the records arrive as several chunks; they still become one
+		// GPU buffer, written at their running byte offsets, so no binding or shader changes.
+		const chunked = triangleData.chunks && triangleData.chunks.length > 1 ? triangleData : null;
+		const flat = chunked ? null : ( triangleData.chunks ? triangleData.chunks[ 0 ] : triangleData );
+		const lanes = chunked ? chunked.recordCount * chunked.lanesPerRecord : flat.length;
+		const vec4Count = lanes / 4;
+
+		const makeAttr = () => chunked
+			? gpuOnlyStorageAttribute( vec4Count, 4, Uint32Array )
+			: new StorageInstancedBufferAttribute( flat, 4 );
 
 		if ( this.triangleStorageNode ) {
 
 			// Create new attribute with correct size (old one is GC'd, backend WeakMap cleans up GPU buffer)
-			this.triangleStorageAttr = new StorageInstancedBufferAttribute( triangleData, 4 );
+			this.triangleStorageAttr = makeAttr();
 
 			// Update storage node references (preserves compiled shader graph)
 			this.triangleStorageNode.value = this.triangleStorageAttr;
@@ -725,10 +767,13 @@ export class PathTracerStage extends RenderStage {
 		} else {
 
 			// First time: create storage buffer and node
-			this.triangleStorageAttr = new StorageInstancedBufferAttribute( triangleData, 4 );
-			this.triangleStorageNode = storage( this.triangleStorageAttr, 'vec4', vec4Count ).toReadOnly();
+			this.triangleStorageAttr = makeAttr();
+			this.triangleStorageNode = storage( this.triangleStorageAttr, 'uvec4', vec4Count ).toReadOnly();
 
 		}
+
+		this._triangleRecords = chunked;
+		if ( chunked ) uploadStorageChunks( this.renderer, this.triangleStorageAttr, chunked.chunks );
 
 		this.triangleCount = triangleCount;
 
@@ -744,20 +789,32 @@ export class PathTracerStage extends RenderStage {
 
 		if ( ! bvhImageData ) return;
 
-		const vec4Count = bvhImageData.length / 4;
+		// Same story as the triangles: past the ~2 GB array cap the nodes arrive as several
+		// chunks and still become one GPU buffer.
+		const chunked = bvhImageData.chunks && bvhImageData.chunks.length > 1 ? bvhImageData : null;
+		const flat = chunked ? null : ( bvhImageData.chunks ? bvhImageData.chunks[ 0 ] : bvhImageData );
+		const lanes = chunked ? chunked.recordCount * chunked.lanesPerRecord : flat.length;
+		const vec4Count = lanes / 4;
+
+		const makeAttr = () => chunked
+			? gpuOnlyStorageAttribute( vec4Count, 4, Float32Array )
+			: new StorageInstancedBufferAttribute( flat, 4 );
 
 		if ( this.bvhStorageNode ) {
 
-			this.bvhStorageAttr = new StorageInstancedBufferAttribute( bvhImageData, 4 );
+			this.bvhStorageAttr = makeAttr();
 			this.bvhStorageNode.value = this.bvhStorageAttr;
 			this.bvhStorageNode.bufferCount = vec4Count;
 
 		} else {
 
-			this.bvhStorageAttr = new StorageInstancedBufferAttribute( bvhImageData, 4 );
+			this.bvhStorageAttr = makeAttr();
 			this.bvhStorageNode = storage( this.bvhStorageAttr, 'vec4', vec4Count ).toReadOnly();
 
 		}
+
+		this._bvhRecords = chunked;
+		if ( chunked ) uploadStorageChunks( this.renderer, this.bvhStorageAttr, chunked.chunks );
 
 		this.bvhNodeCount = Math.floor( vec4Count / BVH_VEC4_PER_NODE );
 		log.debug( `${fmt.n( this.bvhNodeCount )} BVH nodes (storage buffer)` );
@@ -784,13 +841,31 @@ export class PathTracerStage extends RenderStage {
 
 		if ( ! meshes || meshes.length === 0 || ! this._instanceTable ) return;
 
-		for ( let i = 0; i < meshes.length; i ++ ) {
+		this._patchVisibilityFromMeshes( meshes );
+		this._flushBVHEdits();
 
-			this._patchTLASLeafVisibility( i, this._isWorldVisible( meshes[ i ] ) );
+	}
+
+	/**
+	 * Resolve each placement's visibility from the object it came from. Entries are per
+	 * instance, so an InstancedMesh covers a whole run of them with one authored flag.
+	 * @private
+	 */
+	_patchVisibilityFromMeshes( meshes ) {
+
+		const table = this._instanceTable;
+		const cache = new Map();
+
+		for ( let i = 0; i < table.count; i ++ ) {
+
+			if ( ! table.isSet[ i ] ) continue;
+
+			const src = table.sourceMesh[ i ];
+			let visible = cache.get( src );
+			if ( visible === undefined ) cache.set( src, visible = this._isWorldVisible( meshes[ src ] ) );
+			this._patchTLASLeafVisibility( i, visible );
 
 		}
-
-		if ( this.bvhStorageAttr ) this.bvhStorageAttr.needsUpdate = true;
 
 	}
 
@@ -802,7 +877,7 @@ export class PathTracerStage extends RenderStage {
 	updateMeshVisibility( meshIndex, visible ) {
 
 		if ( ! this._patchTLASLeafVisibility( meshIndex, visible ) ) return;
-		if ( this.bvhStorageAttr ) this.bvhStorageAttr.needsUpdate = true;
+		this._flushBVHEdits();
 
 	}
 
@@ -814,13 +889,8 @@ export class PathTracerStage extends RenderStage {
 
 		if ( ! this._meshRefs || ! this._instanceTable ) return;
 
-		for ( let i = 0; i < this._meshRefs.length; i ++ ) {
-
-			this._patchTLASLeafVisibility( i, this._isWorldVisible( this._meshRefs[ i ] ) );
-
-		}
-
-		if ( this.bvhStorageAttr ) this.bvhStorageAttr.needsUpdate = true;
+		this._patchVisibilityFromMeshes( this._meshRefs );
+		this._flushBVHEdits();
 
 	}
 
@@ -831,12 +901,63 @@ export class PathTracerStage extends RenderStage {
 	 */
 	_patchTLASLeafVisibility( meshIndex, visible ) {
 
-		const entry = this._instanceTable?.entries?.[ meshIndex ];
-		if ( ! entry || entry.tlasLeafIndex < 0 || ! this.bvhStorageAttr ) return false;
+		const table = this._instanceTable;
+		if ( ! table || ! table.isSet?.[ meshIndex ] || ! this.bvhStorageAttr ) return false;
 
-		entry.visible = visible;
-		this.bvhStorageAttr.array[ entry.tlasLeafIndex * 16 + 2 ] = visible ? 1.0 : 0.0;
+		const leaf = table.tlasLeafIndex[ meshIndex ];
+		if ( leaf < 0 ) return false;
+
+		table.visible[ meshIndex ] = visible ? 1 : 0;
+
+		// A chunked attribute owns no CPU array; write into the chunk that holds this leaf.
+		if ( this._bvhRecords ) this._bvhRecords.chunkFor( leaf )[ this._bvhRecords.baseOf( leaf ) + 2 ] = visible ? 1.0 : 0.0;
+		else this.bvhStorageAttr.array[ leaf * 16 + 2 ] = visible ? 1.0 : 0.0;
+
+		this._dirtyBVHLeaves ??= new Set();
+		this._dirtyBVHLeaves.add( leaf );
 		return true;
+
+	}
+
+	/**
+	 * Push BVH edits to the GPU. A chunked attribute cannot go through three.js's dirty flag,
+	 * so the touched leaves are written straight into the buffer.
+	 * @private
+	 */
+	_flushBVHEdits() {
+
+		if ( ! this.bvhStorageAttr ) return;
+
+		if ( ! this._bvhRecords ) {
+
+			// Leaves sit in the TLAS at the front; needsUpdate would re-upload every BLAS too.
+			let lo = Infinity, hi = - 1;
+			for ( const leaf of this._dirtyBVHLeaves ?? [] ) {
+
+				if ( leaf < lo ) lo = leaf;
+				if ( leaf > hi ) hi = leaf;
+
+			}
+
+			if ( hi >= 0 ) {
+
+				this.bvhStorageAttr.addUpdateRange( lo * 16, ( hi - lo + 1 ) * 16 );
+				this.bvhStorageAttr.version ++;
+
+			}
+
+			this._dirtyBVHLeaves?.clear();
+			return;
+
+		}
+
+		for ( const leaf of this._dirtyBVHLeaves ?? [] ) {
+
+			uploadStorageChunkRange( this.renderer, this.bvhStorageAttr, this._bvhRecords, leaf * 16, 16 );
+
+		}
+
+		this._dirtyBVHLeaves?.clear();
 
 	}
 
@@ -896,6 +1017,8 @@ export class PathTracerStage extends RenderStage {
 
 		if ( ! attr ) return;
 		attr.array.set( data );
+		// A pending update range would cut this full upload down to that range.
+		attr.clearUpdateRanges();
 		attr.needsUpdate = true;
 
 	}
@@ -903,14 +1026,28 @@ export class PathTracerStage extends RenderStage {
 	/** Update triangle positions in the existing GPU buffer (full). */
 	updateTriangleData( triangleData ) {
 
-		this._updateStorageBuffer( this.triangleStorageAttr, triangleData );
+		if ( this._triangleRecords ) {
+
+			uploadStorageChunks( this.renderer, this.triangleStorageAttr, this._triangleRecords.chunks );
+			return;
+
+		}
+
+		this._updateStorageBuffer( this.triangleStorageAttr, triangleData?.chunks ? triangleData.chunks[ 0 ] : triangleData );
 
 	}
 
 	/** Update BVH node data in the existing GPU buffer (full). */
 	updateBVHData( bvhData ) {
 
-		this._updateStorageBuffer( this.bvhStorageAttr, bvhData );
+		if ( this._bvhRecords ) {
+
+			uploadStorageChunks( this.renderer, this.bvhStorageAttr, this._bvhRecords.chunks );
+			return;
+
+		}
+
+		this._updateStorageBuffer( this.bvhStorageAttr, bvhData?.chunks ? bvhData.chunks[ 0 ] : bvhData );
 
 	}
 
@@ -925,29 +1062,55 @@ export class PathTracerStage extends RenderStage {
 
 		if ( this.triangleStorageAttr && triRanges.length > 0 ) {
 
-			this.triangleStorageAttr.clearUpdateRanges();
+			if ( this._triangleRecords ) {
 
-			for ( const r of triRanges ) {
+				// Chunked: three.js cannot re-upload an attribute with no CPU array, so write
+				// the dirty lanes straight into the GPU buffer.
+				for ( const r of triRanges ) {
 
-				this.triangleStorageAttr.addUpdateRange( r.offset, r.count );
+					uploadStorageChunkRange( this.renderer, this.triangleStorageAttr, this._triangleRecords, r.offset, r.count );
+
+				}
+
+			} else {
+
+				this.triangleStorageAttr.clearUpdateRanges();
+
+				for ( const r of triRanges ) {
+
+					this.triangleStorageAttr.addUpdateRange( r.offset, r.count );
+
+				}
+
+				this.triangleStorageAttr.version ++;
 
 			}
-
-			this.triangleStorageAttr.version ++;
 
 		}
 
 		if ( this.bvhStorageAttr && bvhRanges.length > 0 ) {
 
-			this.bvhStorageAttr.clearUpdateRanges();
+			if ( this._bvhRecords ) {
 
-			for ( const r of bvhRanges ) {
+				for ( const r of bvhRanges ) {
 
-				this.bvhStorageAttr.addUpdateRange( r.offset, r.count );
+					uploadStorageChunkRange( this.renderer, this.bvhStorageAttr, this._bvhRecords, r.offset, r.count );
+
+				}
+
+			} else {
+
+				this.bvhStorageAttr.clearUpdateRanges();
+
+				for ( const r of bvhRanges ) {
+
+					this.bvhStorageAttr.addUpdateRange( r.offset, r.count );
+
+				}
+
+				this.bvhStorageAttr.version ++;
 
 			}
-
-			this.bvhStorageAttr.version ++;
 
 		}
 
@@ -1093,9 +1256,12 @@ export class PathTracerStage extends RenderStage {
 	 */
 	_updateCameraUniforms() {
 
+		const clipStart = getCameraClipStart( this.camera );
 		if ( ! this._matricesApproxEqual( this.lastCameraMatrix, this.camera.matrixWorld ) ||
-			! this._matricesApproxEqual( this.lastProjectionMatrix, this.camera.projectionMatrixInverse ) ) {
+			! this._matricesApproxEqual( this.lastProjectionMatrix, this.camera.projectionMatrixInverse ) ||
+			clipStart !== this.cameraClipStart.value ) {
 
+			this.cameraClipStart.value = clipStart;
 			this.cameraWorldMatrix.value.copy( this.camera.matrixWorld );
 			this.cameraViewMatrix.value.copy( this.camera.matrixWorldInverse );
 			this.cameraProjectionMatrix.value.copy( this.camera.projectionMatrix );
@@ -1157,6 +1323,9 @@ export class PathTracerStage extends RenderStage {
 		context.setTexture( 'pathtracer:normalDepth', writeTex.normalDepth );
 		context.setTexture( 'pathtracer:albedo', writeTex.albedo );
 
+		// Not the same as the context's own `accumulatedFrames`, which counts pipeline renders — this
+		// freezes when the frame retires or the camera moves, which is what a denoiser needs.
+		context.setState( 'pathtracer:samples', this.frameCount );
 		context.setState( 'interactionMode', this.cameraOptimizer?.isInInteractionMode() ?? false );
 		context.setState( 'renderMode', this.renderMode.value );
 
@@ -1224,6 +1393,7 @@ export class PathTracerStage extends RenderStage {
 					// touched here — it is owned by ASVGF_QUALITY_PRESETS, and overwriting it
 					// with a hardcoded value meant `medium` and `high` never took effect.
 					this.emit( 'asvgf:reset' );
+					this.emit( 'denoiser:reset' );
 
 				}
 
@@ -1385,7 +1555,11 @@ export class PathTracerStage extends RenderStage {
 			log.debug( 'material rebuild started' );
 
 			await this.sdfs.rebuildMaterials( scene );
-			this.updateSceneUniforms();
+			// Materials and textures only. `sdfs` is not the processor that built the scene
+			// (PathTracerApp._sdf is), so re-uploading everything from it put its empty emissive
+			// data and instance table in place of the scene's: emitters stopped being sampled.
+			this.materialData.setMaterialData( this.sdfs.materialData, this.sdfs.materials?.map( m => m.sources ) );
+			this.materialData.loadTexturesFromSdfs();
 			this.shaderBuilder.updateSceneTextures( this );
 			this.updateLights();
 			this.reset();
@@ -1445,8 +1619,10 @@ export class PathTracerStage extends RenderStage {
 
 		// Clear data references
 		this.triangleStorageAttr = null;
+		this._triangleRecords = null;
 		this.triangleStorageNode = null;
 		this.bvhStorageAttr = null;
+		this._bvhRecords = null;
 		this.bvhStorageNode = null;
 		this.placeholderTexture = null;
 

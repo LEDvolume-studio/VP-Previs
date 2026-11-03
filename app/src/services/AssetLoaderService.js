@@ -1,5 +1,6 @@
 import { getApp } from '@/lib/appProxy';
 import { LEDVideoManager, prepareLEDAssetRoot } from '@/services/LEDVideoManager';
+import { prepareMannequin } from '@/utils/mannequinPoses';
 
 /**
  * Service class for handling asset loading operations
@@ -35,6 +36,7 @@ export class AssetLoaderService {
 			const root = app.sceneModel;
 			if ( root ) {
 
+				if ( prepareMannequin( root ) ) await app.loadSceneData();
 				root.userData.__rayzeeProjectInstanceId = globalThis.crypto?.randomUUID?.() || `instance-${Date.now()}`;
 				root.userData.__rayzeeCatalogId = modelFile.id;
 				root.userData.__rayzeeAssetVersion = modelFile.assetVersion || 1;
@@ -75,6 +77,7 @@ export class AssetLoaderService {
 		try {
 
 			await app.loadModel( url );
+			if ( app.sceneModel && prepareMannequin( app.sceneModel ) ) await app.loadSceneData();
 			return { success: true, modelName: name || 'Model' };
 
 		} catch ( error ) {
@@ -103,7 +106,7 @@ export class AssetLoaderService {
 
 		try {
 
-			const id = await app.addModel( url, { name } );
+			const id = await app.addModel( url, { name, prepareRoot: root => prepareMannequin( root ) } );
 			const root = app.getSceneObject( id );
 			if ( root ) {
 

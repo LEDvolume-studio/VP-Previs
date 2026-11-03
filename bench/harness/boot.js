@@ -36,7 +36,15 @@ if ( typeof GPUDevice !== 'undefined' ) {
 
 	GPUDevice.prototype.createShaderModule = function ( descriptor ) {
 
-		const record = { label: descriptor.label ?? '(unlabelled)', code: descriptor.code ?? '', module: null };
+		// `device` is kept so the audit can ignore modules that are not the engine's. The patch is on
+		// the prototype, so it also catches every module built on any OTHER device the page creates —
+		// the DLSS super-resolution runtime brings its own. Asking a foreign (and possibly destroyed)
+		// device's module for compilation info leaves a promise that never settles, which surfaced as
+		// `Runtime.callFunctionOn timed out` at the end of a run where every gate had already passed.
+		const record = {
+			label: descriptor.label ?? '(unlabelled)', code: descriptor.code ?? '',
+			module: null, device: this,
+		};
 		record.module = create.call( this, descriptor );
 		shaderModules.push( record );
 		return record.module;
@@ -49,8 +57,11 @@ if ( typeof GPUDevice !== 'undefined' ) {
 async function shaderDiagnostics() {
 
 	const entries = [];
+	const engineDevice = app?.renderer?.backend?.device ?? null;
 
-	for ( const { label, code, module } of shaderModules ) {
+	for ( const { label, code, module, device } of shaderModules ) {
+
+		if ( engineDevice && device && device !== engineDevice ) continue;
 
 		const info = await module.getCompilationInfo().catch( () => null );
 		if ( ! info ) continue;
@@ -70,7 +81,12 @@ async function shaderDiagnostics() {
 
 	}
 
-	return { modules: shaderModules.map( ( r ) => r.label ), entries };
+	return {
+		modules: shaderModules
+			.filter( ( r ) => ! engineDevice || ! r.device || r.device === engineDevice )
+			.map( ( r ) => r.label ),
+		entries,
+	};
 
 }
 
@@ -566,7 +582,283 @@ async function loadModelScene( url, cameraIndex = 1, env = 'procedural' ) {
 
 }
 
+/**
+ * One model load, timed the way the app loads: rendering paused first (MainViewport does this
+ * before it calls loadModel), so the harness measures the same thing the app's `[scene]` line
+ * reports. Used by `bench calibrate` to check this browser against the real app — see
+ * bench/README.md, "What the harness can and cannot measure".
+ *
+ * `blasWorkerTime / blasBuildTime` is how many workers were busy on average. It is the number the
+ * CPU distortion shows up in: a browser the bench launches inflates per-task cost, not per-triangle
+ * cost, so this ratio and the phase times move together with it.
+ *
+ * @param {string} url - model URL, served by the dev server (e.g. `/models/foo.glb`)
+ * @returns {Promise<Object>} phase times in ms, scene counts, and the worker-busy ratio
+ */
+async function profileModelLoad( url ) {
+
+	app.pauseRendering = true;
+	app.stopAnimation();
+
+	const startedAt = performance.now();
+	await app.loadModel( url );
+	const totalMs = performance.now() - startedAt;
+
+	const sdf = app._sdf;
+	const m = sdf.performanceMetrics;
+	const stage = app.stages.pathTracer;
+
+	app.pauseRendering = false;
+
+	return {
+		url,
+		totalMs,
+		phases: {
+			extraction: m.geometryExtractionTime,
+			blas: m.blasBuildTime,
+			tlas: m.tlasBuildTime,
+			assemble: m.bvhAssembleTime,
+			textures: m.textureCreationTime,
+			scene: m.totalProcessingTime,
+		},
+		workersBusy: m.blasBuildTime > 0 ? m.blasWorkerTime / m.blasBuildTime : 0,
+		blasWorkerTime: m.blasWorkerTime,
+		counts: {
+			triangles: stage?.triangleCount ?? null,
+			meshes: app.sceneMeshes?.length ?? null,
+			materials: stage?.materialData?.materialCount ?? null,
+			bvhNodes: sdf.bvh?.recordCount ?? null,
+		},
+	};
+
+}
+
 /** Composited, tone-mapped output as a PNG data URL — what a human would see. */
+/**
+ * Renders through the DLSS super-resolution path: traces at half the requested size, denoises, and
+ * reconstructs to full size. Returns a PNG so the runner can reuse the image metrics.
+ *
+ * Fetches a ~3.5 MB model over the network, so this is opt-in and never part of the default suite.
+ *
+ * @param {{outputWidth: number, outputHeight: number, samples: number}} opts
+ * @returns {Promise<{dataURL: string, width: number, height: number, timings: object}>}
+ */
+async function upscaleRender( { outputWidth, outputHeight, samples } ) {
+
+	const { renderUpscaled } = await import( 'rayzee' );
+
+	// The cached upscaler is built for one input size. Reuse it only at that size; otherwise drop
+	// it, or the next rung in the ladder fails instead of rebuilding.
+	const inW = outputWidth / 2, inH = outputHeight / 2;
+	if ( _benchUpscaler && ( _benchUpscaler.inputWidth !== inW || _benchUpscaler.inputHeight !== inH ) ) {
+
+		_benchUpscaler.dispose();
+		_benchUpscaler = null;
+
+	}
+
+	const result = await renderUpscaled( app, {
+		outputWidth, outputHeight, samples,
+		upscaler: _benchUpscaler,
+		present: false,
+	} );
+	_benchUpscaler = result.upscaler;
+
+	const canvas = document.createElement( 'canvas' );
+	canvas.width = result.width;
+	canvas.height = result.height;
+	canvas.getContext( '2d' ).putImageData(
+		new ImageData( new Uint8ClampedArray( result.rgba8.buffer ?? result.rgba8 ), result.width, result.height ),
+		0, 0,
+	);
+
+	return {
+		dataURL: canvas.toDataURL( 'image/png' ),
+		width: result.width,
+		height: result.height,
+		timings: result.timings,
+	};
+
+}
+
+/**
+ * Compares the WGSL tone curve against the CPU one on real hardware.
+ *
+ * `ToneMapGPU.js` exists because converting half floats in JavaScript costs more than the neural
+ * upscale itself. It is a second implementation of `toneMapToRGBA8`, so it needs a check that fails
+ * when the two drift — which nothing in the unit suite can do, since vitest has no GPU.
+ *
+ * Runs on the renderer's own device over a fixed HDR spread (deep shadow, mid grey, clipped
+ * highlight, single-channel, negative) across every curve and a few exposure/saturation
+ * combinations.
+ */
+async function toneMapParity() {
+
+	const [ { PackedToneMapper }, { toneMapToRGBA8 }, three ] = await Promise.all( [
+		import( '@/core/Processor/ToneMapGPU.js' ),
+		import( '@/core/Processor/ToneMapCPU.js' ),
+		import( 'three' ),
+	] );
+
+	const VALUES = [
+		0, 1e-5, 0.0012, 0.0031308, 0.004, 0.01, 0.05, 0.08, 0.18, 0.3, 0.5, 0.76, 0.9,
+		1, 1.5, 2, 4, 8, 16, 64, 1000,
+	];
+
+	// Colours, not just greys: AgX and Neutral mix channels, so a per-channel test would miss a
+	// transposed matrix. The negative entry exercises the max(0) that Three.js applies before the
+	// curve — saturation drives real frames there.
+	const pixels = [];
+	for ( const v of VALUES ) {
+
+		pixels.push( [ v, v, v ] );
+		pixels.push( [ v, v * 0.25, 0 ] );
+		pixels.push( [ 0, v * 0.5, v ] );
+		pixels.push( [ v, - v * 0.1, v * 0.7 ] );
+
+	}
+
+	const width = pixels.length;
+	const height = 1;
+
+	const device = app.renderer.backend.device;
+
+	// Round-trip through fp16 first: the GPU reads half floats, so comparing against the CPU fed
+	// full floats would report the format's own rounding as drift.
+	const halves = new Uint16Array( width * 4 );
+	for ( let i = 0; i < width; i ++ ) {
+
+		for ( let c = 0; c < 3; c ++ ) halves[ i * 4 + c ] = floatToHalfBits( pixels[ i ][ c ] );
+		halves[ i * 4 + 3 ] = 0x3c00;
+
+	}
+
+	const linear = new Float32Array( width * 4 );
+	for ( let i = 0; i < width; i ++ ) {
+
+		for ( let c = 0; c < 3; c ++ ) linear[ i * 4 + c ] = halfBitsToFloat( halves[ i * 4 + c ] );
+		linear[ i * 4 + 3 ] = 1;
+
+	}
+
+	const src = device.createBuffer( {
+		label: 'bench:tonemap-parity-src',
+		size: halves.byteLength,
+		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+	} );
+	device.queue.writeBuffer( src, 0, halves );
+
+	const mapper = new PackedToneMapper( device, 'bench:tonemap-parity' );
+	mapper.ensureSize( width, height );
+
+	const CURVES = [
+		[ 'none', three.NoToneMapping ],
+		[ 'linear', three.LinearToneMapping ],
+		[ 'reinhard', three.ReinhardToneMapping ],
+		[ 'cineon', three.CineonToneMapping ],
+		[ 'aces', three.ACESFilmicToneMapping ],
+		[ 'agx', three.AgXToneMapping ],
+		[ 'neutral', three.NeutralToneMapping ],
+	];
+	const GRADES = [[ 1, 1 ], [ 2, 1 ], [ 0.5, 1.2 ], [ 1.5, 0.6 ]];
+
+	const findings = [];
+
+	try {
+
+		for ( const [ name, toneMapping ] of CURVES ) {
+
+			for ( const [ exposure, saturation ] of GRADES ) {
+
+				const gpu = await mapper.toRGBA8( src, { exposure, toneMapping, saturation } );
+				const cpu = toneMapToRGBA8( linear, { exposure, toneMapping, saturation } );
+
+				let worst = 0;
+				let worstAt = - 1;
+				for ( let i = 0; i < width * 4; i ++ ) {
+
+					const d = Math.abs( gpu[ i ] - cpu[ i ] );
+					if ( d > worst ) {
+
+						worst = d;
+						worstAt = i;
+
+					}
+
+				}
+
+				findings.push( {
+					curve: name, exposure, saturation, maxDelta: worst,
+					pixel: worstAt >= 0 ? pixels[ Math.floor( worstAt / 4 ) ] : null,
+				} );
+
+			}
+
+		}
+
+	} finally {
+
+		mapper.dispose();
+		src.destroy();
+
+	}
+
+	return findings;
+
+}
+
+const _parityF32 = new Float32Array( 1 );
+const _parityU32 = new Uint32Array( _parityF32.buffer );
+
+function floatToHalfBits( v ) {
+
+	_parityF32[ 0 ] = v;
+	const x = _parityU32[ 0 ];
+	const s = ( x >>> 16 ) & 0x8000;
+	const e = ( x >>> 23 ) & 0xff;
+	const m = x & 0x7fffff;
+
+	if ( e === 255 ) return s | ( m ? 0x7e00 : 0x7c00 );
+
+	const ne = e - 112;
+	if ( ne >= 31 ) return s | 0x7c00;
+	if ( ne <= 0 ) {
+
+		if ( ne < - 10 ) return s;
+		return s | ( ( m | 0x800000 ) >>> ( 14 - ne ) );
+
+	}
+
+	return s | ( ne << 10 ) | ( m >>> 13 );
+
+}
+
+function halfBitsToFloat( u ) {
+
+	const s = ( u & 0x8000 ) ? - 1 : 1;
+	const e = ( u >> 10 ) & 0x1f;
+	const m = u & 0x3ff;
+	if ( e === 0 ) return s * m * 2 ** - 24;
+	if ( e === 31 ) return m ? NaN : s * Infinity;
+	return s * ( m + 1024 ) * 2 ** ( e - 25 );
+
+}
+
+let _benchUpscaler = null;
+
+/**
+ * Releases the super-resolution model and, with it, the second GPUDevice it owns.
+ *
+ * Not optional: leaving it alive made the CDP teardown at the end of the run time out
+ * (`Runtime.callFunctionOn timed out`) long after the rung itself had passed.
+ */
+function disposeUpscaler() {
+
+	_benchUpscaler?.dispose();
+	_benchUpscaler = null;
+
+}
+
 function capturePNG() {
 
 	const out = app.getCanvas();
@@ -676,7 +968,7 @@ async function probes() {
 }
 
 /**
- * Switches the real-time denoiser. 'none' | 'asvgf' | 'edgeaware'.
+ * Switches the real-time denoiser. 'none' | 'asvgf' | 'nrd' | 'edgeaware'.
  *
  * Returns the resulting stage enable-state so a suite can assert the strategy actually took
  * effect rather than trusting the call — a typo'd name hits the switch's default branch and
@@ -720,6 +1012,7 @@ async function setDenoiser( strategy, preset, options = {} ) {
 	return {
 		strategy,
 		asvgf: !! s.asvgf?.enabled,
+		nrd: !! s.nrd?.enabled,
 		variance: !! s.variance?.enabled,
 		bilateral: !! s.bilateralFilter?.enabled,
 		edgeFilter: !! s.edgeFilter?.enabled,
@@ -795,33 +1088,49 @@ async function awaitDenoise( timeoutMs = 120000 ) {
 }
 
 /**
- * The denoiser's own output canvas as a PNG data URL. Deliberately NOT app.getCanvas(): that
- * returns the denoiser canvas only while the path tracer reports complete, and renderFrames()
- * leaves isComplete false — so it falls back to the un-denoised compositor and the suite compares
- * raw against raw for a flat ratio of 1.000.
+ * The denoised image as a PNG data URL. The denoiser hands its result to the pipeline and the
+ * Compositor prefers it over the raw render, so the canvas holds the denoised picture — but only
+ * once `oidn:output` is actually published, which is asserted rather than assumed: without it this
+ * would compare raw against raw for a flat ratio of 1.000 and call it a pass.
  */
-function captureDenoisedPNG() {
+function captureDenoisedPNG( expected = RENDER_SIZE ) {
 
-	const out = app.denoisingManager?.denoiser?.output;
-	if ( ! out ) throw new Error( '__bench.captureDenoisedPNG: no denoiser output canvas' );
+	if ( ! app.pipeline?.context?.getTexture( 'oidn:output' ) ) {
 
-	if ( out.width !== RENDER_SIZE.width || out.height !== RENDER_SIZE.height ) {
+		throw new Error( '__bench.captureDenoisedPNG: no denoised picture published' );
+
+	}
+
+	// getCanvas() re-renders the compositor, which is also what makes a presented WebGPU canvas
+	// readable: the copy below has to happen with nothing awaited in between.
+	const out = app.getCanvas();
+	if ( ! out ) throw new Error( '__bench.captureDenoisedPNG: no canvas' );
+
+	// Still asserted, just not always against RENDER_SIZE: the upscale rung renders its native
+	// reference at other sizes. A caller that states the wrong size still catches a stale canvas.
+	if ( out.width !== expected.width || out.height !== expected.height ) {
 
 		throw new Error(
 			`__bench.captureDenoisedPNG: canvas is ${out.width}x${out.height}, ` +
-			`expected ${RENDER_SIZE.width}x${RENDER_SIZE.height}`
+			`expected ${expected.width}x${expected.height}`
 		);
 
 	}
 
-	// A never-painted canvas is transparent and reads as black, scoring a plausible RMSE
-	// against a dark reference instead of failing.
-	const px = out.getContext( '2d' ).getImageData( 0, 0, out.width, out.height ).data;
+	const scratch = document.createElement( 'canvas' );
+	scratch.width = out.width;
+	scratch.height = out.height;
+	const ctx = scratch.getContext( '2d', { willReadFrequently: true } );
+	ctx.drawImage( out, 0, 0 );
+
+	// A canvas that read back empty is transparent and scores a plausible RMSE against a dark
+	// reference instead of failing.
+	const px = ctx.getImageData( 0, 0, scratch.width, scratch.height ).data;
 	let opaque = 0;
 	for ( let i = 3; i < px.length; i += 4 ) if ( px[ i ] > 0 ) opaque ++;
 	if ( opaque === 0 ) throw new Error( '__bench.captureDenoisedPNG: canvas is blank' );
 
-	return out.toDataURL( 'image/png' );
+	return scratch.toDataURL( 'image/png' );
 
 }
 
@@ -839,6 +1148,7 @@ async function denoisedNonFinite() {
 	const target = ( s.bilateralFilter?.enabled && s.bilateralFilter._outputTarget )
 		|| ( s.edgeFilter?.enabled && s.edgeFilter._outputTarget )
 		|| ( s.asvgf?.enabled && s.asvgf._outputRT )
+		|| ( s.nrd?.enabled && s.nrd.outputTarget )
 		|| app.stages.pathTracer.storageTextures.readTarget;
 
 	const { width, height } = RENDER_SIZE;
@@ -909,6 +1219,7 @@ function setPerfMode( enabled ) {
 
 async function unload() {
 
+	disposeUpscaler();
 	app.unloadScene();
 	app.stopAnimation();
 	currentScene = null;
@@ -1023,6 +1334,7 @@ globalThis.__bench = {
 	setShippingHeuristics,
 	renderFreezeArm,
 	loadModelScene,
+	profileModelLoad,
 	setSettings,
 	setSortMaterials,
 	setSceneConfig,
@@ -1031,6 +1343,9 @@ globalThis.__bench = {
 	setPerfMode,
 	setDenoiser,
 	awaitDenoise,
+	upscaleRender,
+	disposeUpscaler,
+	toneMapParity,
 	captureDenoisedPNG,
 	denoisedNonFinite,
 	shaderDiagnostics,

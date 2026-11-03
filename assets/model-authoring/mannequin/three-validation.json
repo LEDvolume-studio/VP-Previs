@@ -1,0 +1,26 @@
+{
+  "meshes": [
+    {
+      "name": "Cube",
+      "skinned": true,
+      "vertices": 8795,
+      "joints": 69,
+      "materials": [
+        "Material"
+      ]
+    },
+    {
+      "name": "Cube_1",
+      "skinned": true,
+      "vertices": 5971,
+      "joints": 69,
+      "materials": [
+        "Material.001"
+      ]
+    }
+  ],
+  "sourceClips": [],
+  "diagnosticBone": "DEF-upper_armL",
+  "maxPositionChange": 0.19718754291534424,
+  "finitePositions": true
+}

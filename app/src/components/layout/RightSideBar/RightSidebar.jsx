@@ -1,5 +1,5 @@
 import { useMemo, memo, lazy, Suspense } from 'react';
-import { Sliders, Camera, Box, Sun, SwatchBook, Blend, PocketKnife, Bot, Film, MonitorPlay } from 'lucide-react';
+import { Sliders, Camera, Box, Sun, SwatchBook, Blend, PocketKnife, Bot, Film, MonitorPlay, PersonStanding, Images } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
 import { useStore } from '@/store';
@@ -10,11 +10,13 @@ const CameraTab = lazy( () => import( './CameraTab' ) );
 const LightsTab = lazy( () => import( './LightsTab' ) );
 const AssetsTab = lazy( () => import( './AssetsTab' ) );
 const PathTracerTab = lazy( () => import( './PathTracerTab' ) );
-const MaterialTab = lazy( () => import( './MaterialTab' ) );
+const AttributesTab = lazy( () => import( './AttributesTab' ) );
 const AnimationTab = lazy( () => import( './AnimationTab' ) );
 const ColorCorrectionsTab = lazy( () => import( './ColorCorrectionsTab' ) );
 const AITab = lazy( () => import( './AITab' ) );
 const LEDTab = lazy( () => import( './LEDTab' ) );
+const PosesTab = lazy( () => import( './PosesTab' ) );
+const PresetsTab = lazy( () => import( './PresetsTab' ) );
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -31,7 +33,7 @@ const InteractiveModeTabs = memo( () => {
 	const setActiveTab = useStore( state => state.setActiveTab );
 	return (
 		<Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full w-full">
-			<TabsList className="relative grid w-full grid-cols-7 h-12 p-0">
+			<TabsList className="relative grid w-full grid-cols-3 h-36 p-0 shrink-0">
 				<TabsTrigger value="pathtracer" className="flex flex-col items-center py-2">
 					<Sliders size={12} />
 					<span className="text-xs mt-1">Tracer</span>
@@ -46,7 +48,7 @@ const InteractiveModeTabs = memo( () => {
 				</TabsTrigger>
 				<TabsTrigger value="material" className="flex flex-col items-center py-2">
 					<SwatchBook size={12} />
-					<span className="text-xs mt-1">Material</span>
+					<span className="text-xs mt-1">Attributes</span>
 				</TabsTrigger>
 				<TabsTrigger value="led" className="flex flex-col items-center py-2">
 					<MonitorPlay size={12} />
@@ -59,6 +61,14 @@ const InteractiveModeTabs = memo( () => {
 				<TabsTrigger value="assets" className="flex flex-col items-center py-2">
 					<Box size={12} />
 					<span className="text-xs mt-1">Assets</span>
+				</TabsTrigger>
+				<TabsTrigger value="poses" className="flex flex-col items-center py-2">
+					<PersonStanding size={12} />
+					<span className="text-xs mt-1">Poses</span>
+				</TabsTrigger>
+				<TabsTrigger value="presets" className="flex flex-col items-center py-2">
+					<Images size={12} />
+					<span className="text-xs mt-1">Presets</span>
 				</TabsTrigger>
 			</TabsList>
 
@@ -82,7 +92,7 @@ const InteractiveModeTabs = memo( () => {
 
 			<TabsContent value="material" className="relative h-full data-[state=inactive]:hidden data-[state=active]:flex flex-col overflow-y-auto mt-0">
 				<Suspense fallback={<TabLoadingFallback />}>
-					<MaterialTab />
+					<AttributesTab />
 				</Suspense>
 			</TabsContent>
 
@@ -101,6 +111,16 @@ const InteractiveModeTabs = memo( () => {
 			<TabsContent value="assets" className="relative h-full data-[state=inactive]:hidden data-[state=active]:flex flex-col overflow-y-auto mt-0">
 				<Suspense fallback={<TabLoadingFallback />}>
 					<AssetsTab />
+				</Suspense>
+			</TabsContent>
+			<TabsContent value="poses" className="relative h-full data-[state=inactive]:hidden data-[state=active]:flex flex-col overflow-y-auto mt-0">
+				<Suspense fallback={<TabLoadingFallback />}>
+					<PosesTab />
+				</Suspense>
+			</TabsContent>
+			<TabsContent value="presets" className="relative h-full data-[state=inactive]:hidden data-[state=active]:flex flex-col overflow-y-auto mt-0">
+				<Suspense fallback={<TabLoadingFallback />}>
+					<PresetsTab />
 				</Suspense>
 			</TabsContent>
 		</Tabs>

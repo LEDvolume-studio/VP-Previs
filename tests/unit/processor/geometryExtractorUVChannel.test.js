@@ -24,6 +24,13 @@ function makeMesh( uvChannel ) {
 
 }
 
+function firstTriangleFloats( extracted ) {
+
+	const chunk = extracted.triangleData.chunks[ 0 ];
+	return new Float32Array( chunk.buffer, chunk.byteOffset, chunk.length );
+
+}
+
 describe( 'GeometryExtractor authored UV channel', () => {
 
 	it( 'preserves an explicitly authored texture matrix during material extraction', () => {
@@ -58,7 +65,7 @@ describe( 'GeometryExtractor authored UV channel', () => {
 		root.position.set( 4, 2, - 3 );
 		root.rotation.z = Math.PI / 2;
 
-		const data = new GeometryExtractor().extract( root ).triangleData;
+		const data = firstTriangleFloats( new GeometryExtractor().extract( root ) );
 		expect( Array.from( data.slice( T.POSITION_A_OFFSET, T.POSITION_A_OFFSET + 3 ) ) )
 			.toEqual( [ 4, 2, - 3 ] );
 		expect( Array.from( data.slice( T.POSITION_B_OFFSET, T.POSITION_B_OFFSET + 3 ) ) )
@@ -68,9 +75,9 @@ describe( 'GeometryExtractor authored UV channel', () => {
 
 	it( 'packs UV1 when a specialized surface selects channel 1', () => {
 
-		const data = new GeometryExtractor().extract( makeMesh( 1 ) ).triangleData;
+		const data = firstTriangleFloats( new GeometryExtractor().extract( makeMesh( 1 ) ) );
 		expect( Array.from( data.slice( T.UV_AB_OFFSET, T.UV_AB_OFFSET + 4 ) ) ).toEqual( [ 0.5, 0.5, 1, 0.5 ] );
-		expect( Array.from( data.slice( T.UV_C_MAT_OFFSET, T.UV_C_MAT_OFFSET + 2 ) ) ).toEqual( [ 0.5, 1 ] );
+		expect( Array.from( data.slice( T.UV_C_OFFSET, T.UV_C_OFFSET + 2 ) ) ).toEqual( [ 0.5, 1 ] );
 
 	} );
 
@@ -78,7 +85,7 @@ describe( 'GeometryExtractor authored UV channel', () => {
 
 		for ( const channel of [ 0, 3 ] ) {
 
-			const data = new GeometryExtractor().extract( makeMesh( channel ) ).triangleData;
+			const data = firstTriangleFloats( new GeometryExtractor().extract( makeMesh( channel ) ) );
 			expect( Array.from( data.slice( T.UV_AB_OFFSET, T.UV_AB_OFFSET + 4 ) ) ).toEqual( [ 0, 0, 0.25, 0 ] );
 
 		}

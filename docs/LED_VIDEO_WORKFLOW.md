@@ -74,7 +74,7 @@ The normal engine append path tags the root as a scene object and performs the s
 
 ## Video and renderer lifecycle
 
-Input validation checks `.mp4`, MIME when supplied, the MP4 `ftyp` box, an `avc1`/`avc3` H.264 sample entry, baseline browser capability, and finally native `canplay`/`error` decoding. The video is always muted, default-muted, inline, and has no audio controls. Native `loadedmetadata`, `loadeddata`, `canplay`, `play`, `pause`, `timeupdate`, `seeking`, `seeked`, `ended`, and `error` events drive UI state. A rejected `play()` promise becomes an actionable inline error.
+Input validation accepts `.mp4` and `.mov`, verifies the supplied MIME type when available, the ISO base-media `ftyp` box, an `avc1`/`avc3` H.264 sample entry, baseline browser capability, and finally native `canplay`/`error` decoding. The video is always muted, default-muted, inline, and has no audio controls. Native `loadedmetadata`, `loadeddata`, `canplay`, `play`, `pause`, `timeupdate`, `seeking`, `seeked`, `ended`, and `error` events drive UI state. A rejected `play()` promise becomes an actionable inline error.
 
 Each playing wall uses its own `VideoTexture` in raster mode. `requestVideoFrameCallback`, where supported, marks frame availability and wakes the existing application loop; the raster branch itself remains the presentation loop. When the first video starts, the manager saves the user’s path-tracing preference, forces `pathTracerEnabled = false`, and wakes a loop that may have stopped after convergence. Raster mode remains forced while the active count is nonzero. A path-tracer toggle during playback updates the saved preference but cannot leave raster mode; the latest value is restored only after all static-frame uploads finish.
 

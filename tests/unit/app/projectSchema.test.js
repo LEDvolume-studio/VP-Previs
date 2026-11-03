@@ -18,6 +18,21 @@ import {
 
 describe( 'ProjectSchema', () => {
 
+	it( 'declares metres in portable projects and backfills legacy units without rescaling nodes', () => {
+
+		const project = createProjectDocument();
+		expect( project.scene.units ).toEqual( { length: 'metre', metresPerUnit: 1 } );
+		project.scene.nodes.example = { position: [ 3, 4, 5 ], scale: [ 2, 2, 2 ] };
+		delete project.scene.units;
+		const migrated = migrateProjectDocument( project );
+		expect( migrated.scene.units ).toEqual( { length: 'metre', metresPerUnit: 1 } );
+		expect( migrated.scene.nodes ).toEqual( project.scene.nodes );
+		expect( prepareProjectExport( migrated ).scene.units ).toEqual( migrated.scene.units );
+		migrated.scene.units.metresPerUnit = 0.01;
+		expect( () => migrateProjectDocument( migrated ) ).toThrow( 'Unsupported world units' );
+
+	} );
+
 	it( 'increments silent working-copy names without reusing earlier numbers', () => {
 
 		expect( nextWorkingProjectName( [] ) ).toBe( 'New Project 01' );
@@ -102,6 +117,37 @@ describe( 'ProjectSchema', () => {
 		const future = { ...project, schemaVersion: PROJECT_SCHEMA_VERSION + 1 };
 		expect( () => migrateProjectDocument( future ) ).toThrow( /newer Rayzee version/ );
 		expect( future.schemaVersion ).toBe( PROJECT_SCHEMA_VERSION + 1 );
+
+	} );
+
+	it( 'backfills editor view state in existing version-1 projects', () => {
+
+		const legacy = createProjectDocument();
+		delete legacy.workspace.editorView;
+		const migrated = migrateProjectDocument( legacy );
+
+		expect( migrated.workspace.editorView ).toEqual( {
+			mode: 'perspective',
+			style: 'solid',
+			gridVisible: true,
+			views: {},
+		} );
+		expect( legacy.workspace.editorView ).toBeUndefined();
+
+	} );
+
+	it( 'repairs unsupported persisted editor view values', () => {
+
+		const project = createProjectDocument();
+		project.workspace.editorView = { mode: 'right', style: 'lit', views: null };
+		const migrated = migrateProjectDocument( project );
+
+		expect( migrated.workspace.editorView ).toEqual( {
+			mode: 'perspective',
+			style: 'solid',
+			gridVisible: true,
+			views: {},
+		} );
 
 	} );
 

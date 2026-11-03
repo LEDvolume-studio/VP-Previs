@@ -10,6 +10,7 @@ The engine's unit tests cover CPU logic well, but every GPU file — all of `TSL
 npm run bench:list      # show the scene corpus
 npm run bench:bless     # generate ground truth + goldens (first run, slow)
 npm run bench           # quality + denoise + memory + perf
+npm run bench:calibrate # check this browser's CPU timing against the app (see below)
 ```
 
 Individual suites:
@@ -24,6 +25,84 @@ npm run bench:ab -- main    # gate perf against another git ref
 
 Useful flags: `--only scene-a,scene-b`, `--verbose`, `--truth` (regenerate ground truth), `--scene <id>` and `--cycles <n>` for the memory suite.
 
+## What the harness can and cannot measure
+
+The harness renders on a real GPU, but it runs the engine's **CPU** work several times slower than
+the same code in the app in a normally-used browser — and not by a constant factor. Measured on one
+machine, same code, same model, same dev server:
+
+| | app | harness |
+|---|---|---|
+| scene processing | 1.76 s | 25–38 s |
+| BLAS build | 1.15 s | 15–28 s |
+| one 146,670-tri mesh, in a worker | 361 ms | 1,237 ms |
+| summed worker build time, 818 tasks | ~3.4 s | 95–118 s |
+
+The big meshes run ~3.5× slow and the hundreds of small ones far worse, so what inflates is the
+**per-task** cost, not the per-triangle cost. It is not headless (headed is identical), not the
+Chrome flags (a browser with none is just as slow), not the DevTools connection (a plain `spawn`ed
+Chrome matches), not thread priority (a synthetic worker load runs at full speed and scales
+normally), not machine load, not the engine's config, and not the algorithm (plain Node builds that
+same mesh in 296 ms, matching the app).
+
+**Trusted here**
+
+- image quality against goldens and ground truth, and the denoise/freeze ratchets
+- GPU kernel A/B of the same code shape within one browser session (`bench:ab`, `bench:kernels`)
+- VRAM and leak detection
+
+**Not trusted here — measure these in the app**
+
+- absolute CPU time for any build phase
+- per-task cost, worker counts, pool sizes, anything about concurrency
+- shader compile time (~360 ms in the app; 9–23 s here)
+
+A non-uniform error inverts rankings. This is not hypothetical: a harness run showed the BLAS worker
+pool getting *slower* with more workers, the pool was capped at 2 on that evidence, and in the app
+six workers beat two by 86 % — the "fix" made scene processing 55 % slower.
+
+### Calibration
+
+```bash
+npm run bench:calibrate                       # measure this browser
+npm run bench:calibrate -- --snippet          # print the snippet to run in the app
+npm run bench:calibrate -- --app profile.json # add the app half, get a verdict
+```
+
+Capturing the app half, on macOS:
+
+```bash
+npm run dev                                   # then open the app in your normal browser
+npm run bench:calibrate -- --snippet          # paste the snippet into the DevTools console
+pbpaste > /tmp/app-profile.json               # it copies its result to the clipboard
+npm run bench:calibrate -- --app /tmp/app-profile.json
+```
+
+Use an ordinary browser window, not a private one and not a fresh profile — the point of the
+reference is the environment the app actually runs in. The snippet stamps its output so a
+hand-written reference cannot be mistaken for a measured one.
+
+The first form times three model loads in the harness (the first is discarded — V8 tiers up across
+repeats) and stores the result in `baselines/calibration.json`. It then prints a console snippet to
+run in the app, which captures the same measurement there; save it to a file and pass it back with
+`--app`.
+
+From then on every bench run prints one line saying whether this browser's CPU numbers are within
+`CALIBRATION.tolerance` (1.5×) of the app's, and marks them untrustworthy when they are not. The
+comparison deliberately **refuses** rather than correcting: the error is not a scale factor, so
+scaling it out would be worse than saying nothing.
+
+Calibration is per machine and per model (the record stores the GPU fingerprint), and models are
+gitignored, so `--model` points at whatever local model you calibrate with. A corpus scene will not
+do — procedural primitives have too few meshes to show per-task overhead.
+
+### The worker-busy number
+
+`SceneProcessor.performanceMetrics.blasWorkerTime ÷ blasBuildTime` is how many BLAS workers were
+busy on average. The app reports ~1.6–1.8 of 6; a harness run reports 4–5 "busy" while doing 28× the
+total work. It is the cheapest single signal that a CPU measurement is being distorted, and the
+calibration report prints it for both sides.
+
 **Requirements:** Google Chrome installed (override with `CHROME_PATH`). No network access needed — every scene is procedural and the STBN atlases are vendored (see below).
 
 ## How it works
@@ -36,7 +115,7 @@ bench/
   lib/        metrics.js, png.js, stats.js     # pure, unit-tested in tests/unit/bench/
   runner/     cli.js + one module per suite    # runs in Node
   assets/     noise/stbn_*_atlas.png           # vendored engine assets
-  baselines/  golden/, truth/, probes.json, fingerprint.json, perf.jsonl
+  baselines/  golden/, truth/, probes.json, fingerprint.json, perf.jsonl, calibration.json
 ```
 
 ### Reference inputs are vendored, not fetched
@@ -298,11 +377,14 @@ pass or fail, so a scene sitting at 2.0× never reads as clean.
 
 Standing state as of the last bless (`baselines/denoise.json`):
 
-| scene | asvgf @1 | asvgf @64 | edgeaware @1 | edgeaware @64 | oidn @1 | oidn @64 | oidn-tiled @1 | oidn-tiled @64 |
-|---|---|---|---|---|---|---|---|---|
-| `spheres-gradient` | 0.957 | 2.041 | 0.751 | 0.906 | 0.621 | 1.348 | 0.621 | 1.343 |
-| `glass-transmission` | 0.704 | 0.912 | 0.616 | 0.711 | 0.518 | 0.924 | 0.518 | 0.914 |
-| `textured-normalmap` | 0.993 | 1.304 | 0.885 | 0.984 | 0.518 | 0.882 | 0.517 | 0.889 |
+| scene | asvgf @1 | asvgf @64 | nrd @1 | nrd @64 | edgeaware @1 | edgeaware @64 | oidn @1 | oidn @64 | oidn-tiled @1 | oidn-tiled @64 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `spheres-gradient` | 0.957 | 2.041 | 0.992 | 1.000 | 0.751 | 0.906 | 0.621 | 1.348 | 0.621 | 1.343 |
+| `glass-transmission` | 0.704 | 0.912 | 0.688 | 1.000 | 0.616 | 0.711 | 0.518 | 0.924 | 0.518 | 0.914 |
+| `textured-normalmap` | 0.993 | 1.304 | 0.903 | 1.000 | 0.885 | 0.984 | 0.518 | 0.882 | 0.517 | 0.889 |
+
+`nrd` (the ReBLUR port, `docs/NRD_DENOISER.md`) is 1.000 at 64 spp by construction: past its
+handover point it republishes the path tracer's own texture, so a converged render is never touched.
 
 **EdgeAware is no longer the offender at convergence — ASVGF is.** EdgeAware now sits at 0.71–0.98
 at 64 spp, below 1.0 on every scene, while ASVGF ranges 0.91–2.04. That inverted with
@@ -371,6 +453,45 @@ separate `denoisedNonFinite()` probe reads the denoiser's own output target for 
 ~12 % of pixels with nothing in the suite reacting.
 
 OIDN is still excluded: it adds an async completion dependency and deserves its own suite.
+
+### DLSS super resolution — opt-in, and not part of `npm run bench`
+
+`npm run bench:upscale` gates the final-render upscaler: trace at half the output size, denoise,
+reconstruct. It is deliberately **not** in `run`.
+
+The reason is the rule two sections up. This rung's model is fetched from a third-party bucket at
+run time, so it breaks *Reference inputs are vendored, not fetched* — a suite that needs someone
+else's host to be up is a suite that goes red for reasons no commit caused, and a suite people stop
+reading. Vendoring the ~3.5 MB model into `bench/assets/` is the fix if this should ever join the
+default run; until then it is a thing you ask for.
+
+Two numbers, because the failure modes point in opposite directions:
+
+- **RMSE** against the same scene traced natively at the full size, in the same session on the same
+  build. Reference-free in the golden sense, exactly like the denoiser ratio: a path-tracer change
+  moves both sides, so there is no image to bless a regression into.
+- **Detail ratio** — mean neighbour delta, upscaled ÷ native. This is the one that matters. An
+  upscale that quietly degrades toward blur *improves* its RMSE against a denoised reference, so
+  accuracy alone would score the regression as a win. The blessed ratios sit above 1.0 (the
+  reconstruction is measurably sharper than the native render), and the gate only lets them fall by
+  `maxDetailLoss`.
+
+The ladder is `512x512` and `1024x1024` because the network runs a fixed 256x256 minimum tile: at
+512 output it is at that floor, at 1024 it is genuinely larger. A change touching only the
+non-minimum path is invisible from one rung.
+
+OIDN is forced on for the rung. On raw Monte-Carlo noise this upscaler measurably loses to plain
+bilinear, so gating it on an undenoised source would gate the wrong thing entirely.
+
+A **tone-map parity check runs first**, before any image is measured. The upscale reads back display
+bytes through `Processor/ToneMapGPU.js`, a WGSL copy of `ToneMapCPU.js` that exists because
+converting half floats in JavaScript cost more than the network itself. Two implementations of one
+curve drift, and vitest cannot catch it — there is no GPU there. So the rung compares them on the
+real device across all seven curves and four exposure/saturation combinations, over 84 designed
+colours (0 to 1000, negatives, single-channel), and fails above `maxToneMapDelta` (1 level of 255,
+which is what f32-against-f64 rounding produces on a value sitting on a byte boundary). A drift here
+would move every RMSE below it and read as a model regression, which is why it is checked first
+rather than alongside.
 
 ### Texture binding audit — a structural guard, not a metric
 
@@ -441,7 +562,7 @@ Each baseline stores a GPU fingerprint (vendor, architecture, key limits, device
 
 ## The scene corpus
 
-Twenty-one scenes, one failure axis each — fourteen image scenes plus seven `furnace-*` energy
+Twenty-seven scenes, one failure axis each — seventeen image scenes plus ten `furnace-*` energy
 probes. `npm run bench:list` prints them with what they cover.
 
 | scene | pins |
@@ -460,6 +581,9 @@ probes. `npm run bench:list` prints them with what they cover.
 | `sheen-velvet` | sheen distribution across roughness, coloured sheen, base-layer attenuation |
 | `clearcoat-carpaint` | coat Fresnel and coat roughness over a rough base, the `clearcoat > 0.5` threshold |
 | `alpha-cutout` | alpha MASK and BLEND on camera *and* shadow rays, transmittance attenuation |
+| `arealight-analytic` | analytic area light against closed-form irradiance — power→radiance convention, spherical-rectangle NEE, NEE/BSDF MIS, shadow-ray origin |
+| `arealights-two` | two area lights of unequal size, power, shape and spread — reservoir selection, per-light MIS, disk sampling, spread attenuation |
+| `instanced-storage` | object-space shared geometry, InstancedMesh placements, a mirrored placement's winding, an emissive geometry placed twice — the storage paths every other scene skips |
 | `furnace-diffuse` | white furnace control — Lambert energy conservation, and that the rig itself is sound |
 | `furnace-dielectric-glossy` | dielectric specular energy at low roughness (the most sensitive point) |
 | `furnace-metal-mid` | metal multiscatter compensation overshoot at mid roughness |
@@ -467,6 +591,9 @@ probes. `npm run bench:list` prints them with what they cover.
 | `furnace-clearcoat` | clearcoat layer energy on top of the base |
 | `furnace-sheen` | sheen lobe energy and base-layer attenuation |
 | `furnace-iridescence` | thin-film energy across the film-thickness range |
+| `furnace-multibounce` | multi-bounce transport — Russian-roulette compensation, NEE/MIS under occlusion |
+| `furnace-lowpoly-16` | shading-normal energy loss at 16-segment tessellation |
+| `furnace-lowpoly-32` | the same at 32 segments — the pair separates tessellation from the shading model |
 
 Everything is built from three.js primitives, procedural `DataTexture`s and a procedural
 environment, so the corpus needs no network and cannot change when the asset host does. Texture

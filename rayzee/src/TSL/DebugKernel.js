@@ -13,7 +13,7 @@ import {
 	localId, workgroupId,
 } from 'three/tsl';
 
-import { generateRayFromCamera } from './CameraRay.js';
+import { generateRayFromCamera, cameraClipDistance } from './CameraRay.js';
 import { Ray } from './Struct.js';
 import { TraceDebugMode } from './Debugger.js';
 import { pcgHash, getStratifiedSample } from './Random.js';
@@ -28,6 +28,8 @@ export function buildDebugKernel( params ) {
 		cameraWorldMatrix, cameraProjectionMatrixInverse, cameraProjectionMatrix, cameraViewMatrix,
 		cameraProjection, panoLonRange, panoLatRange, panoLevelHorizon,
 		enableDOF, focalLength, aperture, focusDistance, sceneScale, apertureScale, anamorphicRatio,
+		cameraClipStart = float( 0 ),
+		unitsPerMetre = float( 1 ), dofMode = int( 2 ), dofBlur = float( 0.05 ),
 		bvhBuffer, triangleBuffer, materialBuffer,
 		envTexture, environmentMatrix, environmentIntensity, enableEnvironmentLight,
 		visMode, debugVisScale,
@@ -51,6 +53,7 @@ export function buildDebugKernel( params ) {
 				cameraWorldMatrix, cameraProjectionMatrixInverse,
 				cameraProjection, panoLonRange, panoLatRange, panoLevelHorizon,
 				enableDOF, focalLength, aperture, focusDistance, sceneScale, apertureScale, anamorphicRatio,
+				unitsPerMetre, dofMode, dofBlur,
 			) );
 
 			const color = vec4( 1.0, 0.0, 1.0, 1.0 ).toVar();
@@ -66,7 +69,7 @@ export function buildDebugKernel( params ) {
 
 				// Modes 1-8, 10 — shared per-mode debug color (primary-ray trace + counters).
 				color.assign( TraceDebugMode(
-					ray.origin, ray.direction,
+					ray.origin.add( ray.direction.mul( cameraClipDistance( ray.direction, cameraClipStart, cameraWorldMatrix, cameraProjection ) ) ), ray.direction,
 					bvhBuffer, triangleBuffer, materialBuffer,
 					envTexture, environmentMatrix, environmentIntensity, enableEnvironmentLight,
 					visMode, debugVisScale,

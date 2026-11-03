@@ -22,7 +22,7 @@ import {
 	getStratifiedSample,
 } from './Random.js';
 
-import { generateRayFromCamera } from './CameraRay.js';
+import { generateRayFromCamera, cameraClipDistance } from './CameraRay.js';
 import { Ray } from './Struct.js';
 import { RAY_FLAG, COUNTER } from '../Processor/QueueManager.js';
 import {
@@ -41,6 +41,8 @@ export function buildGenerateKernel( params ) {
 		cameraWorldMatrix, cameraProjectionMatrixInverse,
 		cameraProjection, panoLonRange, panoLatRange, panoLevelHorizon,
 		enableDOF, focalLength, aperture, focusDistance, sceneScale, apertureScale, anamorphicRatio,
+		cameraClipStart = float( 0 ),
+		unitsPerMetre = float( 1 ), dofMode = int( 2 ), dofBlur = float( 0.05 ),
 		renderWidth,
 		chunkRowBase, chunkRows, // row band offset (global first row) + row count for this chunk
 		transmissiveBounces, // per-ray refraction budget (megakernel parity: PathTracerCore.js:606)
@@ -79,9 +81,11 @@ export function buildGenerateKernel( params ) {
 			cameraWorldMatrix, cameraProjectionMatrixInverse,
 			cameraProjection, panoLonRange, panoLatRange, panoLevelHorizon,
 			enableDOF, focalLength, aperture, focusDistance, sceneScale, apertureScale, anamorphicRatio,
+			unitsPerMetre, dofMode, dofBlur,
 		) );
 
-		writeRayOriginMeta( rayBufferRW, rayID, ray.origin, int( 0 ), int( 0 ) );
+		const clipAlong = cameraClipDistance( ray.direction, cameraClipStart, cameraWorldMatrix, cameraProjection );
+		writeRayOriginMeta( rayBufferRW, rayID, ray.origin.add( ray.direction.mul( clipAlong ) ), int( 0 ), int( 0 ) );
 		// A fresh camera ray is NOT redirected — REDIRECTED stays clear so it sees the direct backdrop;
 		// ShadeKernel sets REDIRECTED on the first direction-changing interaction (see RAY_FLAG.REDIRECTED).
 		writeRayDirFlags( rayBufferRW, rayID, ray.direction, uint( RAY_FLAG.ACTIVE ) );
@@ -96,7 +100,7 @@ export function buildGenerateKernel( params ) {
 		If( auxOn, () => {
 
 			// default: normal +Z, depth 1 (far), black albedo (background/miss). Per-CHUNK G-buffer → LOCAL slot.
-			writeGBuffer( gBufferRW, rayID, vec3( 0.0, 0.0, 1.0 ), float( 1.0 ), vec3( 0.0 ) );
+			writeGBuffer( gBufferRW, rayID, vec3( 0.0, 0.0, 1.0 ), float( 1.0 ), vec3( 0.0 ), float( 0.0 ) );
 			// DDFA: seed the see-through aux tint to white (no tint yet). RMW preserves slot-5 xyz (sigmaA).
 			writeFeatureThroughput( rayBufferRW, rayID, vec3( 1.0 ) );
 

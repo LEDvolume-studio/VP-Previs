@@ -9,7 +9,7 @@ import reactCompiler from 'eslint-plugin-react-compiler';
 // console.log(mdcs)
 export default [
 	// mdcs,
-	{ ignores: [ 'node_modules', '**/dist', '.claude' ] },
+	{ ignores: [ 'node_modules', '**/dist', '.local-runtime/**', 'backend/.wrangler/**', 'backend/dist-pages/**', 'app/dist-previs-diagnostic/**', '.claude', 'app/public/dlss/dlss-runtime.js' ] },
 	{
 		files: [ '**/*.{js,jsx}' ],
 		languageOptions: {
@@ -45,6 +45,12 @@ export default [
 			],
 			'react-compiler/react-compiler': 'error',
 		},
+	},
+	{
+		// Browser harness drivers use Node while their evaluate callbacks run in the page.
+		files: [ 'tests/browser/previs/**/*.mjs', 'tests/integration/previs/**/*.mjs', 'backend/scripts/**/*.mjs' ],
+		languageOptions: { globals: { ...globals.node, ...globals.browser } },
+		rules: { ...js.configs.recommended.rules },
 	},
 	{
 		// Node-side regression tooling: the runner and its pure libraries execute under

@@ -41,7 +41,7 @@ const RenderControls = () => {
 
 	const isRendering = useStore( state => state.isRendering );
 	const setIsRendering = useStore( state => state.setIsRendering );
-	const enablePathTracer = usePathTracerStore( state => state.enablePathTracer );
+	const pathTracerActive = usePathTracerStore( state => state.pathTracerActive );
 	const selectMode = useCameraStore( state => state.selectMode );
 	const handleToggleSelectMode = useCameraStore( state => state.handleToggleSelectMode );
 	const appMode = useStore( state => state.appMode );
@@ -101,7 +101,7 @@ const RenderControls = () => {
 
 	// Control button definitions — play/pause/restart only when path tracer is enabled
 	const controls = [
-		...( enablePathTracer ? [
+		...( pathTracerActive ? [
 			{
 				icon: isRendering ? <Pause size={14} /> : <Play size={14} />,
 				label: isRendering ? 'Pause' : 'Play',

@@ -5,7 +5,7 @@
  */
 
 import { uniform, texture, storage } from 'three/tsl';
-import { StorageInstancedBufferAttribute } from 'three/webgpu';
+import { gpuOnlyStorageAttribute } from '../TSL/patches.js';
 import { PathTracerStage } from './PathTracerStage.js';
 import { PackedRayBuffer, GBUFFER_STRIDE, RAY_STRIDE, HIT_STRIDE, freeStorageAttribute } from '../Processor/PackedRayBuffer.js';
 import { QueueManager, COUNTER, ENERGY_SCALE } from '../Processor/QueueManager.js';
@@ -23,6 +23,8 @@ import {
 	buildResetGlobalHistKernel, buildGlobalHistKernel, buildGlobalPrefixKernel, buildGlobalScatterKernel,
 	SORT_GLOBAL_WG_SIZE, SORT_GLOBAL_MAX_BINS,
 } from '../TSL/SortGlobalKernels.js';
+import { LIGHT_FLOATS } from '../managers/UniformManager.js';
+import { withSceneResources } from '../TSL/SceneResources.js';
 import { ENGINE_DEFAULTS, MAX_STORAGE_TEXTURE_SIZE } from '../EngineDefaults.js';
 import { createLogger, fmt } from '../utils/Logger.js';
 import {
@@ -88,6 +90,8 @@ export class PathTracer extends PathTracerStage {
 		this._lastBounceEnergy = null;
 		// maxBounces the curve was measured at; the curve is ignored once this no longer matches (-1 = none).
 		this._lastBounceCountsBudget = - 1;
+		// Loop length the curve covers; maxBounces alone is not it (free bounces extend the loop).
+		this._lastBounceCountsLoopBound = - 1;
 		this._readbackPending = false;
 		this._readbackEveryNFrames = 4;
 		this._readbackFrameCounter = 0;
@@ -226,14 +230,29 @@ export class PathTracer extends PathTracerStage {
 
 	}
 
+	_lightRadiusNeeded() {
+
+		const sized = ( type, count, slot ) => {
+
+			if ( ! count ) return false;
+			const data = this[ `${type}LightsBufferNode` ].array;
+			for ( let i = 0; i < count; i ++ ) if ( data[ i * LIGHT_FLOATS[ type ] + slot ] > 0 ) return true;
+			return false;
+
+		};
+
+		return sized( 'point', this.numPointLights.value, 9 ) || sized( 'spot', this.numSpotLights.value, 18 );
+
+	}
+
 	render( context ) {
 
 		// Kernels not built yet (first frame / mid-resize) — skip until ready.
 		if ( ! this.isReady || ! this._wavefrontReady ) return;
 
-		// The packed light buffer was grow-reallocated at runtime (emissive set grew) —
-		// the compiled kernels still bind the old attribute, so rebuild before rendering.
-		if ( this._lightBufferRealloc ) {
+		// Rebuild after light-buffer reallocation or when entering/leaving finite-radius
+		// sampling. Radius edits within the same specialization only update uniforms.
+		if ( this._lightBufferRealloc || this._lightRadiusNeeded() !== this._compiledLightRadius ) {
 
 			if ( this._kernelManager ) this._kernelManager.dispose();
 			this._wavefrontReady = false;
@@ -341,7 +360,7 @@ export class PathTracer extends PathTracerStage {
 
 		const maxBounces = this.maxBounces.value;
 		// Transmissive/SSS steps consume iterations without advancing camera-bounce depth, so the loop must run far enough for deep glass/subsurface walks (mirror PathTracerCore); the survivor curve + early-exit break it early on non-SSS scenes.
-		const loopBound = maxBounces + this.transmissiveBounces.value + this.maxSubsurfaceSteps.value;
+		const loopBound = this._bounceLoopBound();
 
 		const frameHeight = this._wfRenderHeight.value;
 		const chunkRows = this._chunkRows;
@@ -356,9 +375,17 @@ export class PathTracer extends PathTracerStage {
 		// new camera-bounce caps the counts are cap-independent, so trust it up to that cutoff (whole curve when
 		// same/decreasing budget; only the [0, oldBudget) overlap when increasing). budget=-1 → cutoff 0 → full
 		// dispatch everywhere. This avoids the full-work spike on every bounce-count change.
+		// A curve measured with a smaller free-bounce budget under-counts survivors at EVERY depth, not
+		// just past its tail, so sizing off it drops the deep glass paths the bigger budget bought.
+		if ( loopBound > this._lastBounceCountsLoopBound ) this._curveSizingValid = false;
+
 		const curve = this._lastBounceCounts;
+		const curveMeasuredThisFar = maxBounces <= this._lastBounceCountsBudget
+			&& loopBound <= this._lastBounceCountsLoopBound;
 		const curveReliableUpto = ( singleChunk && curve )
-			? ( maxBounces <= this._lastBounceCountsBudget ? loopBound + 1 : this._lastBounceCountsBudget )
+			? ( curveMeasuredThisFar
+				? loopBound + 1
+				: Math.min( this._lastBounceCountsBudget, this._lastBounceCountsLoopBound ) )
 			: 0;
 
 		// Blender-style row-band streaming: the fixed-budget path pool processes the image in bands of ≤ chunkRows
@@ -698,6 +725,12 @@ export class PathTracer extends PathTracerStage {
 
 	}
 
+	_bounceLoopBound() {
+
+		return this.maxBounces.value + this.transmissiveBounces.value + this.maxSubsurfaceSteps.value;
+
+	}
+
 	// Async readback of the per-bounce snapshot every N frames; never awaited, so the early-exit uses past-frame data.
 	_maybeReadbackCounters() {
 
@@ -722,7 +755,8 @@ export class PathTracer extends PathTracerStage {
 		// the budget 3 -> 20 doubles the frame's dispatch work (13 -> 26 bounce iterations, 109 -> 214
 		// compute passes) for as long as that lasts. Waiting out the N-frame cadence just extends it, so
 		// re-measure on the next frame instead — same idiom as the mid-motion priming above.
-		if ( this.maxBounces.value !== this._lastBounceCountsBudget ) {
+		if ( this.maxBounces.value !== this._lastBounceCountsBudget
+			|| this._bounceLoopBound() !== this._lastBounceCountsLoopBound ) {
 
 			this._readbackFrameCounter = this._readbackEveryNFrames;
 
@@ -738,6 +772,7 @@ export class PathTracer extends PathTracerStage {
 		this._readbackPending = true;
 		const gen = this._readbackGeneration;
 		const budget = this.maxBounces.value;
+		const measuredLoopBound = this._bounceLoopBound();
 		const n = this._queueManager.MAX_BOUNCE_SNAPSHOTS;
 		this.renderer.getArrayBufferAsync( attr ).then( ( buf ) => {
 
@@ -750,6 +785,7 @@ export class PathTracer extends PathTracerStage {
 				this._lastBounceCounts = all.subarray( 0, n );
 				this._lastBounceEnergy = all.subarray( n, 2 * n );
 				this._lastBounceCountsBudget = budget;
+				this._lastBounceCountsLoopBound = measuredLoopBound;
 				this._curveSizingValid = true;
 
 			}
@@ -837,6 +873,7 @@ export class PathTracer extends PathTracerStage {
 		this._lastBounceCounts = null;
 		this._lastBounceEnergy = null;
 		this._lastBounceCountsBudget = - 1;
+		this._lastBounceCountsLoopBound = - 1;
 		this._curveSizingValid = false;
 		this._readbackFrameCounter = 0;
 		this._readbackGeneration ++;
@@ -993,7 +1030,7 @@ export class PathTracer extends PathTracerStage {
 		// canonicalize; u32 stores the bits verbatim.
 		const gBufferVec4s = B * GBUFFER_STRIDE;
 		freeStorageAttribute( this.renderer, this._gBufferAttr );
-		this._gBufferAttr = new StorageInstancedBufferAttribute( new Uint32Array( gBufferVec4s * 4 ), 4 );
+		this._gBufferAttr = gpuOnlyStorageAttribute( gBufferVec4s, 4, Uint32Array );
 		const gBufferRW = storage( this._gBufferAttr, 'uvec4' );
 		const gBufferRO = storage( this._gBufferAttr, 'uvec4' ).toReadOnly();
 
@@ -1009,15 +1046,15 @@ export class PathTracer extends PathTracerStage {
 
 			// Tier-1 convergence: per-pixel running mean of luminance² (Welford second moment), read+written by FinalWrite.
 			freeStorageAttribute( this.renderer, this._m2Attr );
-			this._m2Attr = new StorageInstancedBufferAttribute( new Float32Array( maxPixels ), 1 );
+			this._m2Attr = gpuOnlyStorageAttribute( maxPixels, 1 );
 
 			// Tier-2: per-pixel freeze-candidate streak. FinalWrite writes (RW), buildActivePixels reads (RO).
 			freeStorageAttribute( this.renderer, this._streakAttr );
-			this._streakAttr = new StorageInstancedBufferAttribute( new Uint32Array( maxPixels ), 1 );
+			this._streakAttr = gpuOnlyStorageAttribute( maxPixels, 1, Uint32Array );
 
 			// Tier-2: dilated frozen mask (1 = skip). buildActivePixels writes; active-list + FinalWrite read → race-free.
 			freeStorageAttribute( this.renderer, this._frozenMaskAttr );
-			this._frozenMaskAttr = new StorageInstancedBufferAttribute( new Uint32Array( maxPixels ), 1 );
+			this._frozenMaskAttr = gpuOnlyStorageAttribute( maxPixels, 1, Uint32Array );
 
 		}
 
@@ -1117,6 +1154,7 @@ export class PathTracer extends PathTracerStage {
 			// RNG axis only (baseSeed + stratified jitter) — takes the seed counter, not the
 			// accumulation index. FinalWrite keeps `frame`.
 			frame: this.seedFrame,
+			cameraClipStart: this.cameraClipStart,
 			cameraWorldMatrix: this.cameraWorldMatrix,
 			cameraProjectionMatrixInverse: this.cameraProjectionMatrixInverse,
 			cameraProjection: this.cameraProjection,
@@ -1128,6 +1166,9 @@ export class PathTracer extends PathTracerStage {
 			aperture: this.aperture,
 			focusDistance: this.focusDistance,
 			sceneScale: this.sceneScale,
+			unitsPerMetre: this.unitsPerMetre,
+			dofMode: this.dofMode,
+			dofBlur: this.dofBlur,
 			apertureScale: this.apertureScale,
 			anamorphicRatio: this.anamorphicRatio,
 			renderWidth: this._wfRenderWidth,
@@ -1410,6 +1451,7 @@ export class PathTracer extends PathTracerStage {
 
 		}
 
+		const lightRadius = this._compiledLightRadius = this._lightRadiusNeeded();
 		const shadeFn = buildShadeKernel( {
 			gBufferRW,
 			envCompensationDelta: this.envCompensationDelta,
@@ -1474,7 +1516,7 @@ export class PathTracer extends PathTracerStage {
 			auxGBufferEnabled: this._auxGBufferUniform,
 		} );
 		this._kernelManager.register( 'shade',
-			shadeFn().compute(
+			withSceneResources( shadeFn(), { lightRadius } ).compute(
 				[ Math.ceil( maxRays / SHADE_WG_SIZE ), 1, 1 ],
 				[ SHADE_WG_SIZE, 1, 1 ]
 			)
@@ -1593,6 +1635,7 @@ export class PathTracer extends PathTracerStage {
 			resolution: this.resolution,
 			renderWidth: this._wfRenderWidth,
 			renderHeight: this._wfRenderHeight,
+			cameraClipStart: this.cameraClipStart,
 			cameraWorldMatrix: this.cameraWorldMatrix,
 			cameraProjectionMatrixInverse: this.cameraProjectionMatrixInverse,
 			cameraProjectionMatrix: this.cameraProjectionMatrix,
@@ -1606,6 +1649,9 @@ export class PathTracer extends PathTracerStage {
 			aperture: this.aperture,
 			focusDistance: this.focusDistance,
 			sceneScale: this.sceneScale,
+			unitsPerMetre: this.unitsPerMetre,
+			dofMode: this.dofMode,
+			dofBlur: this.dofBlur,
 			apertureScale: this.apertureScale,
 			anamorphicRatio: this.anamorphicRatio,
 			bvhBuffer: freshBvh,

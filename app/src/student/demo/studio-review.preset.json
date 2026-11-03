@@ -1,0 +1,3670 @@
+{
+  "format": "rayzee-student-preset",
+  "schemaVersion": 2,
+  "presetId": "supported-wide",
+  "version": "1",
+  "name": "Standing / closed doors / frozen LED",
+  "description": "Actual supported scene captured for a local integration proof.",
+  "category": "Studio",
+  "defaultDurationFrames": 125,
+  "thumbnail": null,
+  "assets": {
+    "local-fixture-studio@fixture-1": {
+      "assetId": "local-fixture-studio",
+      "version": "fixture-1",
+      "kind": "model",
+      "sha256": "50142c830a08716d107aa2ea94e166b1b292b52b943ee79d81bdc7c548a5ff8d",
+      "byteLength": 396084,
+      "mimeType": "model/gltf-binary",
+      "durationUs": null
+    },
+    "local-fixture-suv@fixture-1": {
+      "assetId": "local-fixture-suv",
+      "version": "fixture-1",
+      "kind": "model",
+      "sha256": "38bdd5dcbf6be692ecf8dd7d6c0bca44c060234836fa8eba012e979eed9597bc",
+      "byteLength": 19432020,
+      "mimeType": "model/gltf-binary",
+      "durationUs": null
+    },
+    "local-fixture-mannequin@fixture-1": {
+      "assetId": "local-fixture-mannequin",
+      "version": "fixture-1",
+      "kind": "model",
+      "sha256": "a494718adecba5ac662b199af944de2d60368bc3f8498c7664c82d400624bf12",
+      "byteLength": 1787740,
+      "mimeType": "model/gltf-binary",
+      "durationUs": null
+    },
+    "local-fixture-led@fixture-1": {
+      "assetId": "local-fixture-led",
+      "version": "fixture-1",
+      "kind": "model",
+      "sha256": "8b5b9f5fc6ee7dd399f77ee4c64c05adda6e6b0ae4637f7f6e11eeb3c7e26ea3",
+      "byteLength": 8680,
+      "mimeType": "model/gltf-binary",
+      "durationUs": null
+    },
+    "fixture-timecode@generated-1": {
+      "assetId": "fixture-timecode",
+      "version": "generated-1",
+      "kind": "video",
+      "sha256": "34d593fdf5dcbcc327d026b74065d81ff127082e444460db1ec4f920a98f5c13",
+      "byteLength": 168896,
+      "mimeType": "video/mp4",
+      "durationUs": 3000000
+    }
+  },
+  "baseScene": {
+    "sceneId": "local-fixture-led-mannequin-studio-suv",
+    "version": "fixture-1",
+    "assets": [
+      {
+        "assetId": "local-fixture-studio",
+        "version": "fixture-1"
+      },
+      {
+        "assetId": "local-fixture-suv",
+        "version": "fixture-1"
+      },
+      {
+        "assetId": "local-fixture-mannequin",
+        "version": "fixture-1"
+      },
+      {
+        "assetId": "local-fixture-led",
+        "version": "fixture-1"
+      }
+    ]
+  },
+  "snapshot": {
+    "nodes": {
+      "studio-root": {
+        "asset": {
+          "assetId": "local-fixture-studio",
+          "version": "fixture-1"
+        },
+        "nodeId": "studio-root",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "studio-instance-0": {
+        "asset": {
+          "assetId": "local-fixture-studio",
+          "version": "fixture-1"
+        },
+        "nodeId": "studio-node-0",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-root": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-root",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-0": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-0",
+        "transform": {
+          "position": [
+            0.05879795551300049,
+            0.17759263515472412,
+            -0.6819178462028503
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-1": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-1",
+        "transform": {
+          "position": [
+            -1.100000023841858,
+            1,
+            1.0149999856948853
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-2": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-2",
+        "transform": {
+          "position": [
+            -0.058797478675842285,
+            0.17759275436401367,
+            -0.6819178462028503
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-3": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-3",
+        "transform": {
+          "position": [
+            1.100000023841858,
+            1,
+            1.0149999856948853
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-4": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-4",
+        "transform": {
+          "position": [
+            -1.1920928955078125e-05,
+            1.213016152381897,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-5": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-5",
+        "transform": {
+          "position": [
+            -0.9693341255187988,
+            0.45344141125679016,
+            1.779822826385498
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-6": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-6",
+        "transform": {
+          "position": [
+            0.9693112373352051,
+            0.45344141125679016,
+            1.779822826385498
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-7": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-7",
+        "transform": {
+          "position": [
+            -1.1920928955078125e-05,
+            1.4059834480285645,
+            -2.3693134784698486
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-8": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-8",
+        "transform": {
+          "position": [
+            -0.9466328620910645,
+            1.1931655406951904,
+            -0.9374918937683105
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-9": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-9",
+        "transform": {
+          "position": [
+            0.9466090202331543,
+            1.1931655406951904,
+            -0.937491774559021
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-10": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-10",
+        "transform": {
+          "position": [
+            -0.9693341255187988,
+            0.45344167947769165,
+            -1.6934435367584229
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-11": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-11",
+        "transform": {
+          "position": [
+            0.9693112373352051,
+            0.45344167947769165,
+            -1.6934435367584229
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-12": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-12",
+        "transform": {
+          "position": [
+            -0.007312297821044922,
+            0.8872753381729126,
+            0.556304931640625
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-13": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-13",
+        "transform": {
+          "position": [
+            0.5014243125915527,
+            1.2754658460617065,
+            0.558230996131897
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-14": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-14",
+        "transform": {
+          "position": [
+            -1.1444091796875e-05,
+            0.5076597929000854,
+            1.7371089458465576
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-15": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-15",
+        "transform": {
+          "position": [
+            -1.1444091796875e-05,
+            0.5337566137313843,
+            -1.7142291069030762
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-16": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-16",
+        "transform": {
+          "position": [
+            -0.34677839279174805,
+            1.4011399745941162,
+            1.320109486579895
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-17": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-17",
+        "transform": {
+          "position": [
+            0.3508419990539551,
+            1.3910787105560303,
+            1.3427040576934814
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-18": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-18",
+        "transform": {
+          "position": [
+            -0.33804941177368164,
+            1.5812349319458008,
+            -2.538177967071533
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "suv-instance-19": {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodeId": "suv-node-19",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-root": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-root",
+        "transform": {
+          "position": [
+            2.7,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": "standing",
+        "doorAngles": {}
+      },
+      "mannequin-instance-0": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-0",
+        "transform": {
+          "position": [
+            -2.0081643015146255e-09,
+            0.1823146641254425,
+            7.057678885757923e-09
+          ],
+          "quaternion": [
+            0.03472324460744858,
+            0.9539284110069275,
+            -0.2978285551071167,
+            0.010631469078361988
+          ],
+          "scale": [
+            1,
+            0.9999997615814209,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-1": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-1",
+        "transform": {
+          "position": [
+            -7.490612574656552e-10,
+            0.20248839259147644,
+            -3.079776433878578e-10
+          ],
+          "quaternion": [
+            -0.5236104130744934,
+            -0.0002061486738966778,
+            0.00012855093518737704,
+            0.8519577980041504
+          ],
+          "scale": [
+            1,
+            1.0000001192092896,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-2": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-2",
+        "transform": {
+          "position": [
+            -8.19956191833171e-09,
+            0.20248831808567047,
+            6.233165095181903e-10
+          ],
+          "quaternion": [
+            -2.9802322387695312e-08,
+            1.1546319456101628e-13,
+            1.2575800589689073e-13,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-3": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-3",
+        "transform": {
+          "position": [
+            7.526732570539707e-10,
+            0.18988946080207825,
+            -7.033973403736127e-10
+          ],
+          "quaternion": [
+            0.04245305806398392,
+            -1.665035142650595e-06,
+            -7.751479103035308e-08,
+            0.9990984797477722
+          ],
+          "scale": [
+            1,
+            1.0000001192092896,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-4": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-4",
+        "transform": {
+          "position": [
+            3.9634828752355133e-10,
+            0.18988952040672302,
+            -2.3785862168779204e-10
+          ],
+          "quaternion": [
+            1.6763804566721774e-08,
+            6.955755416093723e-13,
+            -2.1229437763281567e-08,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-5": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-5",
+        "transform": {
+          "position": [
+            0.08915555477142334,
+            0.8992347121238708,
+            0.04177553951740265
+          ],
+          "quaternion": [
+            -0.9996662735939026,
+            1.916405345525618e-08,
+            8.020096231575735e-08,
+            0.02583220601081848
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-6": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-6",
+        "transform": {
+          "position": [
+            -3.5374796425458044e-09,
+            0.1823146939277649,
+            7.512426236644387e-09
+          ],
+          "quaternion": [
+            0.034868668764829636,
+            -0.9539230465888977,
+            0.29781168699264526,
+            0.011097367852926254
+          ],
+          "scale": [
+            0.9999999403953552,
+            0.9999999403953552,
+            0.9999998807907104
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-7": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-7",
+        "transform": {
+          "position": [
+            7.490505993246188e-10,
+            0.20248837769031525,
+            -3.078355348407058e-10
+          ],
+          "quaternion": [
+            -0.5236103534698486,
+            -0.00020993684302084148,
+            0.00012722174869850278,
+            0.8519578576087952
+          ],
+          "scale": [
+            1,
+            1.0000001192092896,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-8": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-8",
+        "transform": {
+          "position": [
+            8.19956369468855e-09,
+            0.20248831808567047,
+            -3.1018316803965718e-09
+          ],
+          "quaternion": [
+            -2.2351741790771484e-08,
+            -1.1901590823981678e-13,
+            -1.1262030804454204e-13,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-9": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-9",
+        "transform": {
+          "position": [
+            -7.52672368875551e-10,
+            0.18988946080207825,
+            -2.565959000833118e-09
+          ],
+          "quaternion": [
+            0.04245305433869362,
+            1.665035142650595e-06,
+            7.751479103035308e-08,
+            0.9990984797477722
+          ],
+          "scale": [
+            1,
+            1.0000001192092896,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-10": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-10",
+        "transform": {
+          "position": [
+            -1.108989788889403e-09,
+            0.18988953530788422,
+            -2.37441177830533e-10
+          ],
+          "quaternion": [
+            1.6763808119435453e-08,
+            1.1791886911360905e-12,
+            -2.1229434210567888e-08,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-11": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-11",
+        "transform": {
+          "position": [
+            -0.08915552496910095,
+            0.8992347121238708,
+            0.04177553206682205
+          ],
+          "quaternion": [
+            -0.9996662735939026,
+            2.3280572136741284e-08,
+            -7.910205823691285e-08,
+            0.025832202285528183
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-12": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-12",
+        "transform": {
+          "position": [
+            0.08257004618644714,
+            1.505678653717041,
+            0.010835488326847553
+          ],
+          "quaternion": [
+            -0.5178289413452148,
+            -0.4816470146179199,
+            -0.5177028775215149,
+            0.4815114736557007
+          ],
+          "scale": [
+            0.9999999403953552,
+            1,
+            0.9999998807907104
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-13": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-13",
+        "transform": {
+          "position": [
+            -5.753463483415544e-09,
+            0.033778123557567596,
+            -1.3040130397712346e-07
+          ],
+          "quaternion": [
+            0.029014885425567627,
+            -2.207066700066207e-06,
+            5.131865350449516e-07,
+            0.9995790123939514
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-14": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-14",
+        "transform": {
+          "position": [
+            1.8917489796876907e-09,
+            0.04081686958670616,
+            -7.644536026418791e-08
+          ],
+          "quaternion": [
+            1.7664626739133382e-06,
+            2.961605332529871e-06,
+            -1.937064553203527e-07,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-15": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-15",
+        "transform": {
+          "position": [
+            0.0065984223037958145,
+            0.12044674903154373,
+            0.03550798073410988
+          ],
+          "quaternion": [
+            0.012189154513180256,
+            0.7379167079925537,
+            0.020029831677675247,
+            0.6744844317436218
+          ],
+          "scale": [
+            0.9999999403953552,
+            0.9999998807907104,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-16": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-16",
+        "transform": {
+          "position": [
+            0.004997245967388153,
+            0.02355160191655159,
+            0.02751954458653927
+          ],
+          "quaternion": [
+            0.033937208354473114,
+            0.7342784404754639,
+            0.02462664060294628,
+            0.6775521636009216
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-17": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-17",
+        "transform": {
+          "position": [
+            2.1420419216156006e-08,
+            0.041678331792354584,
+            -1.4901161193847656e-08
+          ],
+          "quaternion": [
+            0.028086058795452118,
+            1.3750065591011662e-05,
+            -0.005168944597244263,
+            0.9995921850204468
+          ],
+          "scale": [
+            0.9999998807907104,
+            1,
+            0.9999998807907104
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-18": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-18",
+        "transform": {
+          "position": [
+            -1.1175870895385742e-07,
+            0.04933170974254608,
+            4.470348358154297e-08
+          ],
+          "quaternion": [
+            0.046344880014657974,
+            -0.00010841842595255002,
+            0.002340261824429035,
+            0.9989227652549744
+          ],
+          "scale": [
+            1,
+            0.9999998211860657,
+            0.9999998807907104
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-19": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-19",
+        "transform": {
+          "position": [
+            0.028933726251125336,
+            0.035133976489305496,
+            0.03593744337558746
+          ],
+          "quaternion": [
+            0.26637351512908936,
+            0.9389002323150635,
+            0.19461074471473694,
+            0.09817446768283844
+          ],
+          "scale": [
+            0.9999999403953552,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-20": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-20",
+        "transform": {
+          "position": [
+            -5.182300810702145e-09,
+            0.03600810095667839,
+            -1.5359765370703826e-07
+          ],
+          "quaternion": [
+            0.027359407395124435,
+            4.070920169851888e-07,
+            1.1475713534991883e-07,
+            0.9996256828308105
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-21": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-21",
+        "transform": {
+          "position": [
+            2.9594957595691085e-09,
+            0.04230617359280586,
+            -4.750967264044448e-08
+          ],
+          "quaternion": [
+            6.12694384471979e-06,
+            -2.15803675018833e-06,
+            -4.8386709750047885e-08,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-22": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-22",
+        "transform": {
+          "position": [
+            0.0042044478468596935,
+            0.1225094124674797,
+            0.00911964476108551
+          ],
+          "quaternion": [
+            0.012187124229967594,
+            0.7379186749458313,
+            0.020031889900565147,
+            0.6744822263717651
+          ],
+          "scale": [
+            0.9999999403953552,
+            0.9999997019767761,
+            0.9999998807907104
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-23": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-23",
+        "transform": {
+          "position": [
+            0.001805250532925129,
+            0.029507696628570557,
+            0.0074705276638269424
+          ],
+          "quaternion": [
+            0.015478678978979588,
+            0.7324601411819458,
+            -0.0022847724612802267,
+            0.6806301474571228
+          ],
+          "scale": [
+            0.9999998211860657,
+            0.9999997019767761,
+            0.9999998807907104
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-24": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-24",
+        "transform": {
+          "position": [
+            7.194103091023862e-09,
+            0.03271801769733429,
+            -1.0884873802297079e-07
+          ],
+          "quaternion": [
+            0.0285304244607687,
+            -1.5425155197590357e-07,
+            1.8034850768344768e-07,
+            0.9995929598808289
+          ],
+          "scale": [
+            1,
+            1,
+            1.0000001192092896
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-25": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-25",
+        "transform": {
+          "position": [
+            -3.385139279998839e-09,
+            0.0372464694082737,
+            1.288979945002211e-07
+          ],
+          "quaternion": [
+            1.026907739287708e-05,
+            -1.1811857092425271e-07,
+            -1.005097516326714e-07,
+            1
+          ],
+          "scale": [
+            0.9999999403953552,
+            0.9999999403953552,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-26": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-26",
+        "transform": {
+          "position": [
+            0.002015508711338043,
+            0.12156575173139572,
+            -0.015425588935613632
+          ],
+          "quaternion": [
+            0.012185826897621155,
+            0.7379181385040283,
+            0.020033378154039383,
+            0.6744827628135681
+          ],
+          "scale": [
+            1.0000001192092896,
+            1.0000001192092896,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-27": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-27",
+        "transform": {
+          "position": [
+            -0.00018676702165976167,
+            0.03130359947681427,
+            -0.012421485036611557
+          ],
+          "quaternion": [
+            -0.0026507112197577953,
+            0.7236504554748535,
+            -0.020449411123991013,
+            0.6898585557937622
+          ],
+          "scale": [
+            1.0000001192092896,
+            1.000000238418579,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-28": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-28",
+        "transform": {
+          "position": [
+            -4.6566128730773926e-09,
+            0.02711198851466179,
+            -3.8220605347305536e-08
+          ],
+          "quaternion": [
+            0.03604041785001755,
+            3.5954587929154513e-07,
+            0.0002608667709864676,
+            0.9993503093719482
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-29": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-29",
+        "transform": {
+          "position": [
+            -2.7939677238464355e-09,
+            0.03279920667409897,
+            -5.353649612516165e-08
+          ],
+          "quaternion": [
+            2.9724302294198424e-05,
+            -1.0631448077447203e-07,
+            -0.0001343494950560853,
+            1
+          ],
+          "scale": [
+            0.9999998807907104,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-30": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-30",
+        "transform": {
+          "position": [
+            -0.00011961453128606081,
+            0.11538539081811905,
+            -0.040157247334718704
+          ],
+          "quaternion": [
+            0.01235356554389,
+            0.7349608540534973,
+            0.020087890326976776,
+            0.6776993870735168
+          ],
+          "scale": [
+            0.9999999403953552,
+            0.9999995827674866,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-31": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-31",
+        "transform": {
+          "position": [
+            -0.0015596655430272222,
+            0.024937959387898445,
+            -0.03180994093418121
+          ],
+          "quaternion": [
+            -0.025819148868322372,
+            0.7260832190513611,
+            -0.03888120874762535,
+            0.6860209703445435
+          ],
+          "scale": [
+            1,
+            0.9999995827674866,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-32": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-32",
+        "transform": {
+          "position": [
+            5.51808625459671e-08,
+            0.13010892271995544,
+            -1.862645149230957e-08
+          ],
+          "quaternion": [
+            -0.023257004097104073,
+            -0.00017042421677615494,
+            -0.007309864740818739,
+            0.9997028112411499
+          ],
+          "scale": [
+            1,
+            1,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-33": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-33",
+        "transform": {
+          "position": [
+            -1.1146767064929008e-08,
+            0.13010887801647186,
+            -2.3283064365386963e-09
+          ],
+          "quaternion": [
+            -1.3053067959845066e-08,
+            1.7680577002465725e-09,
+            -4.656612873077393e-10,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-34": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-34",
+        "transform": {
+          "position": [
+            -1.4260876923799515e-08,
+            0.13593383133411407,
+            -4.656612873077393e-10
+          ],
+          "quaternion": [
+            0.056566763669252396,
+            -7.221245823529898e-07,
+            2.1991145615629648e-07,
+            0.9983987808227539
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-35": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-35",
+        "transform": {
+          "position": [
+            -6.720074452459812e-08,
+            0.13593387603759766,
+            -1.862645149230957e-08
+          ],
+          "quaternion": [
+            -7.0649548433721066e-09,
+            1.0092662705574185e-07,
+            -1.8277205526828766e-08,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-36": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-36",
+        "transform": {
+          "position": [
+            0.1938193440437317,
+            1.4540860652923584,
+            0.0006588026881217957
+          ],
+          "quaternion": [
+            -0.040664318948984146,
+            -0.022526511922478676,
+            -0.7075310945510864,
+            0.7051516175270081
+          ],
+          "scale": [
+            0.9999998211860657,
+            1,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-37": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-37",
+        "transform": {
+          "position": [
+            -0.08257003873586655,
+            1.505678653717041,
+            0.010835486464202404
+          ],
+          "quaternion": [
+            -0.5178289413452148,
+            0.4816470146179199,
+            0.5177028775215149,
+            0.4815114736557007
+          ],
+          "scale": [
+            1,
+            1.0000001192092896,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-38": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-38",
+        "transform": {
+          "position": [
+            1.6552803572267294e-10,
+            0.03377797454595566,
+            -1.3045541891187895e-07
+          ],
+          "quaternion": [
+            0.029014872387051582,
+            2.3261256956175203e-06,
+            -5.038694439463143e-07,
+            0.9995790123939514
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-39": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-39",
+        "transform": {
+          "position": [
+            -6.56291376799345e-09,
+            0.040816836059093475,
+            4.100672867934918e-08
+          ],
+          "quaternion": [
+            1.7655308965913719e-06,
+            -2.963206043204991e-06,
+            1.9184392385795945e-07,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-40": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-40",
+        "transform": {
+          "position": [
+            -0.006598425097763538,
+            0.12044691294431686,
+            0.03550794720649719
+          ],
+          "quaternion": [
+            0.012189161032438278,
+            -0.7379167079925537,
+            -0.0200298260897398,
+            0.674484372138977
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-41": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-41",
+        "transform": {
+          "position": [
+            -0.004997247830033302,
+            0.023551704362034798,
+            0.027519511058926582
+          ],
+          "quaternion": [
+            0.03393721207976341,
+            -0.7342785000801086,
+            -0.024626638740301132,
+            0.6775521636009216
+          ],
+          "scale": [
+            1,
+            0.9999999403953552,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-42": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-42",
+        "transform": {
+          "position": [
+            6.612390279769897e-08,
+            0.04167840629816055,
+            1.4901161193847656e-08
+          ],
+          "quaternion": [
+            0.028086068108677864,
+            -1.3742618648393545e-05,
+            0.00516900047659874,
+            0.9995921850204468
+          ],
+          "scale": [
+            0.9999999403953552,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-43": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-43",
+        "transform": {
+          "position": [
+            1.434236764907837e-07,
+            0.04933171719312668,
+            -4.470348358154297e-08
+          ],
+          "quaternion": [
+            0.046344857662916183,
+            0.00010840537288459018,
+            -0.0023402972146868706,
+            0.9989227652549744
+          ],
+          "scale": [
+            1,
+            1,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-44": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-44",
+        "transform": {
+          "position": [
+            -0.028933608904480934,
+            0.03513414040207863,
+            0.035937413573265076
+          ],
+          "quaternion": [
+            0.26637348532676697,
+            -0.9389002323150635,
+            -0.19461074471473694,
+            0.09817442297935486
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-45": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-45",
+        "transform": {
+          "position": [
+            -5.989932105876505e-09,
+            0.036008141934871674,
+            8.550830443709856e-08
+          ],
+          "quaternion": [
+            0.02735939994454384,
+            -4.0697688064028625e-07,
+            -1.110303387008571e-07,
+            0.9996256828308105
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-46": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-46",
+        "transform": {
+          "position": [
+            -1.2421878636814654e-08,
+            0.04230615496635437,
+            -5.370537792259711e-08
+          ],
+          "quaternion": [
+            6.128806489869021e-06,
+            2.039211267401697e-06,
+            5.5837695356331096e-08,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-47": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-47",
+        "transform": {
+          "position": [
+            -0.004204448778182268,
+            0.12250951677560806,
+            0.009119611233472824
+          ],
+          "quaternion": [
+            0.012187130749225616,
+            -0.7379185557365417,
+            -0.020031888037919998,
+            0.6744823455810547
+          ],
+          "scale": [
+            1,
+            0.9999997615814209,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-48": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-48",
+        "transform": {
+          "position": [
+            -0.0018051324877887964,
+            0.02950773760676384,
+            0.007470497861504555
+          ],
+          "quaternion": [
+            0.015478678978979588,
+            -0.7324601411819458,
+            0.0022847731597721577,
+            0.6806301474571228
+          ],
+          "scale": [
+            0.9999999403953552,
+            0.9999998211860657,
+            0.9999998807907104
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-49": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-49",
+        "transform": {
+          "position": [
+            3.081368049606681e-09,
+            0.03271793946623802,
+            -1.237847158108707e-07
+          ],
+          "quaternion": [
+            0.0285304244607687,
+            1.4717791430030047e-07,
+            -1.769472532942018e-07,
+            0.9995929598808289
+          ],
+          "scale": [
+            0.9999999403953552,
+            0.9999998807907104,
+            0.9999999403953552
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-50": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-50",
+        "transform": {
+          "position": [
+            -4.838511813431978e-09,
+            0.03724651038646698,
+            1.1381958131551073e-07
+          ],
+          "quaternion": [
+            1.0269073754898272e-05,
+            1.1711069447528644e-07,
+            1.0423627827549353e-07,
+            1
+          ],
+          "scale": [
+            0.9999999403953552,
+            0.9999999403953552,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-51": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-51",
+        "transform": {
+          "position": [
+            -0.0020155066158622503,
+            0.12156585603952408,
+            -0.01542561873793602
+          ],
+          "quaternion": [
+            0.01218583807349205,
+            -0.7379180788993835,
+            -0.020033376291394234,
+            0.6744828224182129
+          ],
+          "scale": [
+            1.0000001192092896,
+            1.000000238418579,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-52": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-52",
+        "transform": {
+          "position": [
+            0.0001867674000095576,
+            0.03130370005965233,
+            -0.012421512976288795
+          ],
+          "quaternion": [
+            -0.0026507095899432898,
+            -0.7236505150794983,
+            0.020449405536055565,
+            0.6898585557937622
+          ],
+          "scale": [
+            1.0000001192092896,
+            1.000000238418579,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-53": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-53",
+        "transform": {
+          "position": [
+            -2.7939677238464355e-09,
+            0.027112025767564774,
+            5.991751095280051e-08
+          ],
+          "quaternion": [
+            0.03604041039943695,
+            -4.79460595670389e-07,
+            -0.0002608681097626686,
+            0.9993503093719482
+          ],
+          "scale": [
+            1,
+            0.9999999403953552,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-54": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-54",
+        "transform": {
+          "position": [
+            4.6566128730773926e-09,
+            0.03279925510287285,
+            -4.6245986595749855e-08
+          ],
+          "quaternion": [
+            2.972817310364917e-05,
+            2.2367204621787096e-07,
+            0.0001343401672784239,
+            1
+          ],
+          "scale": [
+            0.9999998807907104,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-55": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-55",
+        "transform": {
+          "position": [
+            0.00011961872223764658,
+            0.1153854951262474,
+            -0.04015727341175079
+          ],
+          "quaternion": [
+            0.012353566475212574,
+            -0.7349609136581421,
+            -0.02008788101375103,
+            0.6776992678642273
+          ],
+          "scale": [
+            1,
+            0.9999996423721313,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-56": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-56",
+        "transform": {
+          "position": [
+            0.0015597895253449678,
+            0.024938177317380905,
+            -0.0318099670112133
+          ],
+          "quaternion": [
+            -0.02581915259361267,
+            -0.7260832786560059,
+            0.038881197571754456,
+            0.6860209107398987
+          ],
+          "scale": [
+            1,
+            0.9999996423721313,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-57": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-57",
+        "transform": {
+          "position": [
+            -1.6973353922367096e-07,
+            0.13010884821414948,
+            -5.587935447692871e-09
+          ],
+          "quaternion": [
+            -0.023257000371813774,
+            0.00017042456602212042,
+            0.007309861481189728,
+            0.9997027516365051
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-58": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-58",
+        "transform": {
+          "position": [
+            -1.0125222615897655e-07,
+            0.13010889291763306,
+            1.4435499906539917e-08
+          ],
+          "quaternion": [
+            -2.011074684560299e-08,
+            -5.1259121391922235e-09,
+            -8.731149137020111e-10,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-59": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-59",
+        "transform": {
+          "position": [
+            1.4842953532934189e-08,
+            0.13593386113643646,
+            -6.51925802230835e-09
+          ],
+          "quaternion": [
+            0.0565667562186718,
+            7.797077614668524e-07,
+            -2.161218901619577e-07,
+            0.9983987808227539
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-60": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-60",
+        "transform": {
+          "position": [
+            -3.9173755794763565e-08,
+            0.13593389093875885,
+            9.080395102500916e-09
+          ],
+          "quaternion": [
+            2.0372681319713593e-10,
+            -8.596998668508604e-08,
+            -1.7462298274040222e-10,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-61": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-61",
+        "transform": {
+          "position": [
+            -0.1938193440437317,
+            1.4540860652923584,
+            0.0006587989628314972
+          ],
+          "quaternion": [
+            -0.04066428169608116,
+            0.02252650260925293,
+            0.7075310945510864,
+            0.7051516175270081
+          ],
+          "scale": [
+            0.9999999403953552,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-62": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-62",
+        "transform": {
+          "position": [
+            -1.3766765505351941e-14,
+            0.042056869715452194,
+            -1.862645149230957e-08
+          ],
+          "quaternion": [
+            -0.09591230005025864,
+            -8.610435742184563e-08,
+            -1.0828770768966933e-07,
+            0.9953898191452026
+          ],
+          "scale": [
+            1,
+            1.0000001192092896,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-63": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-63",
+        "transform": {
+          "position": [
+            8.881784197001252e-15,
+            0.0433044508099556,
+            1.862645504502325e-08
+          ],
+          "quaternion": [
+            -0.0023959758691489697,
+            -3.6421500482219926e-08,
+            6.64505037661911e-08,
+            0.9999971389770508
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            0.9999998807907104
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-64": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-64",
+        "transform": {
+          "position": [
+            3.9968028886505635e-15,
+            0.28148430585861206,
+            -1.8626435949187226e-09
+          ],
+          "quaternion": [
+            0.08368820697069168,
+            1.437075951571387e-07,
+            5.177461659400251e-08,
+            0.9964919686317444
+          ],
+          "scale": [
+            1,
+            0.9999998807907104,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-65": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-65",
+        "transform": {
+          "position": [
+            8.881784197001252e-16,
+            0.10018982738256454,
+            -3.725290298461914e-09
+          ],
+          "quaternion": [
+            0.0398220531642437,
+            -1.2852913400251964e-08,
+            -3.91480137196254e-09,
+            0.9992068409919739
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-66": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-66",
+        "transform": {
+          "position": [
+            0,
+            0.09572678804397583,
+            0
+          ],
+          "quaternion": [
+            -0.0009208596893586218,
+            2.5326974607722645e-14,
+            -2.1954983664418393e-10,
+            0.9999995827674866
+          ],
+          "scale": [
+            1,
+            0.9999999403953552,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-67": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-67",
+        "transform": {
+          "position": [
+            4.440892098500626e-16,
+            0.21560995280742645,
+            -9.313225746154785e-10
+          ],
+          "quaternion": [
+            -0.042697735130786896,
+            -1.1910065467191089e-07,
+            -1.526990267564088e-08,
+            0.9990880489349365
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-68": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-68",
+        "transform": {
+          "position": [
+            0,
+            0.8236624598503113,
+            0.027486741542816162
+          ],
+          "quaternion": [
+            0.022454120218753815,
+            2.3835855245124549e-07,
+            5.3534754407280616e-09,
+            0.9997478723526001
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-69": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-69",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "mannequin-instance-70": {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodeId": "mannequin-node-70",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "led-root": {
+        "asset": {
+          "assetId": "local-fixture-led",
+          "version": "fixture-1"
+        },
+        "nodeId": "led-root",
+        "transform": {
+          "position": [
+            0,
+            0,
+            -4.5
+          ],
+          "quaternion": [
+            0,
+            0.7071067811865475,
+            0,
+            0.7071067811865476
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      },
+      "led-instance-0": {
+        "asset": {
+          "assetId": "local-fixture-led",
+          "version": "fixture-1"
+        },
+        "nodeId": "led-node-0",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "humanPose": null,
+        "doorAngles": {}
+      }
+    },
+    "camera": {
+      "transform": {
+        "position": [
+          5.8,
+          3,
+          7.5
+        ],
+        "quaternion": [
+          -0.07901232457784906,
+          0.32209501086502973,
+          0.026987254761808247,
+          0.9430183161641572
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "visible": true
+      },
+      "target": [
+        0,
+        1.4,
+        0
+      ],
+      "projection": {
+        "type": "perspective",
+        "near": 0.05,
+        "far": 500,
+        "zoom": 1,
+        "clipStart": 0,
+        "fov": 48,
+        "aspect": 1.7777777777777777,
+        "filmGauge": 35,
+        "filmOffset": 0
+      },
+      "renderProjection": {
+        "type": "perspective",
+        "panoramaLonRange": [
+          -180,
+          180
+        ],
+        "panoramaLatRange": [
+          -90,
+          90
+        ],
+        "panoramaLevelHorizon": true
+      },
+      "lens": {
+        "focalLength": 22.109424493119626,
+        "focusDistance": 0.8,
+        "aperture": 5.6,
+        "enableDOF": false,
+        "apertureScale": 1,
+        "anamorphicRatio": 1,
+        "dofMode": "legacy",
+        "dofBlur": 0.05,
+        "unitsPerMetre": 1,
+        "sensorWidth": 36,
+        "sensorHeight": 20.25,
+        "autoFocusMode": "manual",
+        "afScreenPoint": [
+          0.5,
+          0.5
+        ],
+        "afSmoothingFactor": 0.15
+      },
+      "exposure": 0.35,
+      "frameOverlayRatio": "4:3"
+    },
+    "lights": [
+      {
+        "lightId": "key",
+        "type": "point",
+        "transform": {
+          "position": [
+            3,
+            5,
+            4
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "color": [
+          1,
+          0.8796223968851662,
+          0.7156935005005721
+        ],
+        "intensity": 8000,
+        "emission": {
+          "temperature": 6500,
+          "useTemperature": false,
+          "exposure": 0
+        },
+        "parameters": {
+          "distance": 0,
+          "decay": 2,
+          "radius": 0
+        }
+      },
+      {
+        "lightId": "fill",
+        "type": "point",
+        "transform": {
+          "position": [
+            -3,
+            3,
+            1
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "visible": true
+        },
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "color": [
+          0.5906188409113381,
+          0.7379104087672317,
+          1
+        ],
+        "intensity": 4000,
+        "emission": {
+          "temperature": 6500,
+          "useTemperature": false,
+          "exposure": 0
+        },
+        "parameters": {
+          "distance": 0,
+          "decay": 2,
+          "radius": 0
+        }
+      }
+    ],
+    "environment": {
+      "asset": null,
+      "intensity": 0,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "background": false
+    },
+    "ledWalls": [
+      {
+        "wallId": "main-wall",
+        "presentationVersion": 1,
+        "nodeInstanceId": "led-instance-0",
+        "media": {
+          "assetId": "fixture-timecode",
+          "version": "generated-1"
+        },
+        "mode": "freeze",
+        "inPointUs": 1000000,
+        "loop": true,
+        "playbackRate": 1,
+        "brightnessNits": 200,
+        "placement": {
+          "position": [
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotationDegrees": 0,
+          "aspectRatioLocked": true,
+          "fitMode": "stretch"
+        },
+        "surface": {
+          "nativeCanvas": [
+            6144,
+            2592
+          ],
+          "uvChannel": 1,
+          "uvBounds": [
+            -0.000700951,
+            1,
+            0.288818359,
+            0.7109375
+          ],
+          "flipU": true
+        }
+      }
+    ],
+    "rasterAppearance": {
+      "version": 1,
+      "postProcessing": "rayzee-realtime-v1",
+      "toneMapping": 4,
+      "outputColorSpace": "srgb",
+      "enableEnvironment": false,
+      "showBackground": false,
+      "transparentBackground": false,
+      "backgroundIntensity": 1,
+      "backgroundBlurriness": 0,
+      "backgroundColor": "#17212d"
+    }
+  },
+  "sceneDefinition": {
+    "format": "rayzee-student-scene",
+    "schemaVersion": 1,
+    "baseScene": {
+      "sceneId": "local-fixture-led-mannequin-studio-suv",
+      "version": "fixture-1",
+      "assets": [
+        {
+          "assetId": "local-fixture-studio",
+          "version": "fixture-1"
+        },
+        {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        {
+          "assetId": "local-fixture-led",
+          "version": "fixture-1"
+        }
+      ]
+    },
+    "models": [
+      {
+        "asset": {
+          "assetId": "local-fixture-studio",
+          "version": "fixture-1"
+        },
+        "nodes": [
+          {
+            "instanceId": "studio-root",
+            "nodeId": "studio-root",
+            "gltfNodeIndex": null,
+            "expectedName": null
+          },
+          {
+            "instanceId": "studio-instance-0",
+            "nodeId": "studio-node-0",
+            "gltfNodeIndex": 0,
+            "expectedName": ""
+          }
+        ]
+      },
+      {
+        "asset": {
+          "assetId": "local-fixture-suv",
+          "version": "fixture-1"
+        },
+        "nodes": [
+          {
+            "instanceId": "suv-root",
+            "nodeId": "suv-root",
+            "gltfNodeIndex": null,
+            "expectedName": null
+          },
+          {
+            "instanceId": "suv-instance-0",
+            "nodeId": "suv-node-0",
+            "gltfNodeIndex": 0,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_FrontDoorL"
+          },
+          {
+            "instanceId": "suv-instance-1",
+            "nodeId": "suv-node-1",
+            "gltfNodeIndex": 1,
+            "expectedName": "FrontDoor_left_Hinge"
+          },
+          {
+            "instanceId": "suv-instance-2",
+            "nodeId": "suv-node-2",
+            "gltfNodeIndex": 2,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_FrontDoorR"
+          },
+          {
+            "instanceId": "suv-instance-3",
+            "nodeId": "suv-node-3",
+            "gltfNodeIndex": 3,
+            "expectedName": "FrontDoor_right_Hinge"
+          },
+          {
+            "instanceId": "suv-instance-4",
+            "nodeId": "suv-node-4",
+            "gltfNodeIndex": 4,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_Body"
+          },
+          {
+            "instanceId": "suv-instance-5",
+            "nodeId": "suv-node-5",
+            "gltfNodeIndex": 5,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_FrontWheelL"
+          },
+          {
+            "instanceId": "suv-instance-6",
+            "nodeId": "suv-node-6",
+            "gltfNodeIndex": 6,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_FrontWheelR"
+          },
+          {
+            "instanceId": "suv-instance-7",
+            "nodeId": "suv-node-7",
+            "gltfNodeIndex": 7,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_Hatch"
+          },
+          {
+            "instanceId": "suv-instance-8",
+            "nodeId": "suv-node-8",
+            "gltfNodeIndex": 8,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_RearDoorL"
+          },
+          {
+            "instanceId": "suv-instance-9",
+            "nodeId": "suv-node-9",
+            "gltfNodeIndex": 9,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_RearDoorR"
+          },
+          {
+            "instanceId": "suv-instance-10",
+            "nodeId": "suv-node-10",
+            "gltfNodeIndex": 10,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_RearWheelL"
+          },
+          {
+            "instanceId": "suv-instance-11",
+            "nodeId": "suv-node-11",
+            "gltfNodeIndex": 11,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_RearWheelR"
+          },
+          {
+            "instanceId": "suv-instance-12",
+            "nodeId": "suv-node-12",
+            "gltfNodeIndex": 12,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_Shifter"
+          },
+          {
+            "instanceId": "suv-instance-13",
+            "nodeId": "suv-node-13",
+            "gltfNodeIndex": 13,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_SteeringWheel"
+          },
+          {
+            "instanceId": "suv-instance-14",
+            "nodeId": "suv-node-14",
+            "gltfNodeIndex": 14,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_SuspensionFront"
+          },
+          {
+            "instanceId": "suv-instance-15",
+            "nodeId": "suv-node-15",
+            "gltfNodeIndex": 15,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_SuspensionRear"
+          },
+          {
+            "instanceId": "suv-instance-16",
+            "nodeId": "suv-node-16",
+            "gltfNodeIndex": 16,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_WiperA"
+          },
+          {
+            "instanceId": "suv-instance-17",
+            "nodeId": "suv-node-17",
+            "gltfNodeIndex": 17,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_WiperB"
+          },
+          {
+            "instanceId": "suv-instance-18",
+            "nodeId": "suv-node-18",
+            "gltfNodeIndex": 18,
+            "expectedName": "KB3D_CEV_VehicMidSUV_A_WiperC"
+          },
+          {
+            "instanceId": "suv-instance-19",
+            "nodeId": "suv-node-19",
+            "gltfNodeIndex": 19,
+            "expectedName": "KB3D_Mid_SUV"
+          }
+        ]
+      },
+      {
+        "asset": {
+          "assetId": "local-fixture-mannequin",
+          "version": "fixture-1"
+        },
+        "nodes": [
+          {
+            "instanceId": "mannequin-root",
+            "nodeId": "mannequin-root",
+            "gltfNodeIndex": null,
+            "expectedName": null
+          },
+          {
+            "instanceId": "mannequin-instance-0",
+            "nodeId": "mannequin-node-0",
+            "gltfNodeIndex": 0,
+            "expectedName": "DEF-toe.L"
+          },
+          {
+            "instanceId": "mannequin-instance-1",
+            "nodeId": "mannequin-node-1",
+            "gltfNodeIndex": 1,
+            "expectedName": "DEF-foot.L"
+          },
+          {
+            "instanceId": "mannequin-instance-2",
+            "nodeId": "mannequin-node-2",
+            "gltfNodeIndex": 2,
+            "expectedName": "DEF-shin.L.001"
+          },
+          {
+            "instanceId": "mannequin-instance-3",
+            "nodeId": "mannequin-node-3",
+            "gltfNodeIndex": 3,
+            "expectedName": "DEF-shin.L"
+          },
+          {
+            "instanceId": "mannequin-instance-4",
+            "nodeId": "mannequin-node-4",
+            "gltfNodeIndex": 4,
+            "expectedName": "DEF-thigh.L.001"
+          },
+          {
+            "instanceId": "mannequin-instance-5",
+            "nodeId": "mannequin-node-5",
+            "gltfNodeIndex": 5,
+            "expectedName": "DEF-thigh.L"
+          },
+          {
+            "instanceId": "mannequin-instance-6",
+            "nodeId": "mannequin-node-6",
+            "gltfNodeIndex": 6,
+            "expectedName": "DEF-toe.R"
+          },
+          {
+            "instanceId": "mannequin-instance-7",
+            "nodeId": "mannequin-node-7",
+            "gltfNodeIndex": 7,
+            "expectedName": "DEF-foot.R"
+          },
+          {
+            "instanceId": "mannequin-instance-8",
+            "nodeId": "mannequin-node-8",
+            "gltfNodeIndex": 8,
+            "expectedName": "DEF-shin.R.001"
+          },
+          {
+            "instanceId": "mannequin-instance-9",
+            "nodeId": "mannequin-node-9",
+            "gltfNodeIndex": 9,
+            "expectedName": "DEF-shin.R"
+          },
+          {
+            "instanceId": "mannequin-instance-10",
+            "nodeId": "mannequin-node-10",
+            "gltfNodeIndex": 10,
+            "expectedName": "DEF-thigh.R.001"
+          },
+          {
+            "instanceId": "mannequin-instance-11",
+            "nodeId": "mannequin-node-11",
+            "gltfNodeIndex": 11,
+            "expectedName": "DEF-thigh.R"
+          },
+          {
+            "instanceId": "mannequin-instance-12",
+            "nodeId": "mannequin-node-12",
+            "gltfNodeIndex": 12,
+            "expectedName": "DEF-shoulder.L"
+          },
+          {
+            "instanceId": "mannequin-instance-13",
+            "nodeId": "mannequin-node-13",
+            "gltfNodeIndex": 13,
+            "expectedName": "DEF-f_index.03.L"
+          },
+          {
+            "instanceId": "mannequin-instance-14",
+            "nodeId": "mannequin-node-14",
+            "gltfNodeIndex": 14,
+            "expectedName": "DEF-f_index.02.L"
+          },
+          {
+            "instanceId": "mannequin-instance-15",
+            "nodeId": "mannequin-node-15",
+            "gltfNodeIndex": 15,
+            "expectedName": "DEF-f_index.01.L"
+          },
+          {
+            "instanceId": "mannequin-instance-16",
+            "nodeId": "mannequin-node-16",
+            "gltfNodeIndex": 16,
+            "expectedName": "DEF-palm.01.L"
+          },
+          {
+            "instanceId": "mannequin-instance-17",
+            "nodeId": "mannequin-node-17",
+            "gltfNodeIndex": 17,
+            "expectedName": "DEF-thumb.03.L"
+          },
+          {
+            "instanceId": "mannequin-instance-18",
+            "nodeId": "mannequin-node-18",
+            "gltfNodeIndex": 18,
+            "expectedName": "DEF-thumb.02.L"
+          },
+          {
+            "instanceId": "mannequin-instance-19",
+            "nodeId": "mannequin-node-19",
+            "gltfNodeIndex": 19,
+            "expectedName": "DEF-thumb.01.L"
+          },
+          {
+            "instanceId": "mannequin-instance-20",
+            "nodeId": "mannequin-node-20",
+            "gltfNodeIndex": 20,
+            "expectedName": "DEF-f_middle.03.L"
+          },
+          {
+            "instanceId": "mannequin-instance-21",
+            "nodeId": "mannequin-node-21",
+            "gltfNodeIndex": 21,
+            "expectedName": "DEF-f_middle.02.L"
+          },
+          {
+            "instanceId": "mannequin-instance-22",
+            "nodeId": "mannequin-node-22",
+            "gltfNodeIndex": 22,
+            "expectedName": "DEF-f_middle.01.L"
+          },
+          {
+            "instanceId": "mannequin-instance-23",
+            "nodeId": "mannequin-node-23",
+            "gltfNodeIndex": 23,
+            "expectedName": "DEF-palm.02.L"
+          },
+          {
+            "instanceId": "mannequin-instance-24",
+            "nodeId": "mannequin-node-24",
+            "gltfNodeIndex": 24,
+            "expectedName": "DEF-f_ring.03.L"
+          },
+          {
+            "instanceId": "mannequin-instance-25",
+            "nodeId": "mannequin-node-25",
+            "gltfNodeIndex": 25,
+            "expectedName": "DEF-f_ring.02.L"
+          },
+          {
+            "instanceId": "mannequin-instance-26",
+            "nodeId": "mannequin-node-26",
+            "gltfNodeIndex": 26,
+            "expectedName": "DEF-f_ring.01.L"
+          },
+          {
+            "instanceId": "mannequin-instance-27",
+            "nodeId": "mannequin-node-27",
+            "gltfNodeIndex": 27,
+            "expectedName": "DEF-palm.03.L"
+          },
+          {
+            "instanceId": "mannequin-instance-28",
+            "nodeId": "mannequin-node-28",
+            "gltfNodeIndex": 28,
+            "expectedName": "DEF-f_pinky.03.L"
+          },
+          {
+            "instanceId": "mannequin-instance-29",
+            "nodeId": "mannequin-node-29",
+            "gltfNodeIndex": 29,
+            "expectedName": "DEF-f_pinky.02.L"
+          },
+          {
+            "instanceId": "mannequin-instance-30",
+            "nodeId": "mannequin-node-30",
+            "gltfNodeIndex": 30,
+            "expectedName": "DEF-f_pinky.01.L"
+          },
+          {
+            "instanceId": "mannequin-instance-31",
+            "nodeId": "mannequin-node-31",
+            "gltfNodeIndex": 31,
+            "expectedName": "DEF-palm.04.L"
+          },
+          {
+            "instanceId": "mannequin-instance-32",
+            "nodeId": "mannequin-node-32",
+            "gltfNodeIndex": 32,
+            "expectedName": "DEF-hand.L"
+          },
+          {
+            "instanceId": "mannequin-instance-33",
+            "nodeId": "mannequin-node-33",
+            "gltfNodeIndex": 33,
+            "expectedName": "DEF-forearm.L.001"
+          },
+          {
+            "instanceId": "mannequin-instance-34",
+            "nodeId": "mannequin-node-34",
+            "gltfNodeIndex": 34,
+            "expectedName": "DEF-forearm.L"
+          },
+          {
+            "instanceId": "mannequin-instance-35",
+            "nodeId": "mannequin-node-35",
+            "gltfNodeIndex": 35,
+            "expectedName": "DEF-upper_arm.L.001"
+          },
+          {
+            "instanceId": "mannequin-instance-36",
+            "nodeId": "mannequin-node-36",
+            "gltfNodeIndex": 36,
+            "expectedName": "DEF-upper_arm.L"
+          },
+          {
+            "instanceId": "mannequin-instance-37",
+            "nodeId": "mannequin-node-37",
+            "gltfNodeIndex": 37,
+            "expectedName": "DEF-shoulder.R"
+          },
+          {
+            "instanceId": "mannequin-instance-38",
+            "nodeId": "mannequin-node-38",
+            "gltfNodeIndex": 38,
+            "expectedName": "DEF-f_index.03.R"
+          },
+          {
+            "instanceId": "mannequin-instance-39",
+            "nodeId": "mannequin-node-39",
+            "gltfNodeIndex": 39,
+            "expectedName": "DEF-f_index.02.R"
+          },
+          {
+            "instanceId": "mannequin-instance-40",
+            "nodeId": "mannequin-node-40",
+            "gltfNodeIndex": 40,
+            "expectedName": "DEF-f_index.01.R"
+          },
+          {
+            "instanceId": "mannequin-instance-41",
+            "nodeId": "mannequin-node-41",
+            "gltfNodeIndex": 41,
+            "expectedName": "DEF-palm.01.R"
+          },
+          {
+            "instanceId": "mannequin-instance-42",
+            "nodeId": "mannequin-node-42",
+            "gltfNodeIndex": 42,
+            "expectedName": "DEF-thumb.03.R"
+          },
+          {
+            "instanceId": "mannequin-instance-43",
+            "nodeId": "mannequin-node-43",
+            "gltfNodeIndex": 43,
+            "expectedName": "DEF-thumb.02.R"
+          },
+          {
+            "instanceId": "mannequin-instance-44",
+            "nodeId": "mannequin-node-44",
+            "gltfNodeIndex": 44,
+            "expectedName": "DEF-thumb.01.R"
+          },
+          {
+            "instanceId": "mannequin-instance-45",
+            "nodeId": "mannequin-node-45",
+            "gltfNodeIndex": 45,
+            "expectedName": "DEF-f_middle.03.R"
+          },
+          {
+            "instanceId": "mannequin-instance-46",
+            "nodeId": "mannequin-node-46",
+            "gltfNodeIndex": 46,
+            "expectedName": "DEF-f_middle.02.R"
+          },
+          {
+            "instanceId": "mannequin-instance-47",
+            "nodeId": "mannequin-node-47",
+            "gltfNodeIndex": 47,
+            "expectedName": "DEF-f_middle.01.R"
+          },
+          {
+            "instanceId": "mannequin-instance-48",
+            "nodeId": "mannequin-node-48",
+            "gltfNodeIndex": 48,
+            "expectedName": "DEF-palm.02.R"
+          },
+          {
+            "instanceId": "mannequin-instance-49",
+            "nodeId": "mannequin-node-49",
+            "gltfNodeIndex": 49,
+            "expectedName": "DEF-f_ring.03.R"
+          },
+          {
+            "instanceId": "mannequin-instance-50",
+            "nodeId": "mannequin-node-50",
+            "gltfNodeIndex": 50,
+            "expectedName": "DEF-f_ring.02.R"
+          },
+          {
+            "instanceId": "mannequin-instance-51",
+            "nodeId": "mannequin-node-51",
+            "gltfNodeIndex": 51,
+            "expectedName": "DEF-f_ring.01.R"
+          },
+          {
+            "instanceId": "mannequin-instance-52",
+            "nodeId": "mannequin-node-52",
+            "gltfNodeIndex": 52,
+            "expectedName": "DEF-palm.03.R"
+          },
+          {
+            "instanceId": "mannequin-instance-53",
+            "nodeId": "mannequin-node-53",
+            "gltfNodeIndex": 53,
+            "expectedName": "DEF-f_pinky.03.R"
+          },
+          {
+            "instanceId": "mannequin-instance-54",
+            "nodeId": "mannequin-node-54",
+            "gltfNodeIndex": 54,
+            "expectedName": "DEF-f_pinky.02.R"
+          },
+          {
+            "instanceId": "mannequin-instance-55",
+            "nodeId": "mannequin-node-55",
+            "gltfNodeIndex": 55,
+            "expectedName": "DEF-f_pinky.01.R"
+          },
+          {
+            "instanceId": "mannequin-instance-56",
+            "nodeId": "mannequin-node-56",
+            "gltfNodeIndex": 56,
+            "expectedName": "DEF-palm.04.R"
+          },
+          {
+            "instanceId": "mannequin-instance-57",
+            "nodeId": "mannequin-node-57",
+            "gltfNodeIndex": 57,
+            "expectedName": "DEF-hand.R"
+          },
+          {
+            "instanceId": "mannequin-instance-58",
+            "nodeId": "mannequin-node-58",
+            "gltfNodeIndex": 58,
+            "expectedName": "DEF-forearm.R.001"
+          },
+          {
+            "instanceId": "mannequin-instance-59",
+            "nodeId": "mannequin-node-59",
+            "gltfNodeIndex": 59,
+            "expectedName": "DEF-forearm.R"
+          },
+          {
+            "instanceId": "mannequin-instance-60",
+            "nodeId": "mannequin-node-60",
+            "gltfNodeIndex": 60,
+            "expectedName": "DEF-upper_arm.R.001"
+          },
+          {
+            "instanceId": "mannequin-instance-61",
+            "nodeId": "mannequin-node-61",
+            "gltfNodeIndex": 61,
+            "expectedName": "DEF-upper_arm.R"
+          },
+          {
+            "instanceId": "mannequin-instance-62",
+            "nodeId": "mannequin-node-62",
+            "gltfNodeIndex": 62,
+            "expectedName": "DEF-spine.006"
+          },
+          {
+            "instanceId": "mannequin-instance-63",
+            "nodeId": "mannequin-node-63",
+            "gltfNodeIndex": 63,
+            "expectedName": "DEF-spine.005"
+          },
+          {
+            "instanceId": "mannequin-instance-64",
+            "nodeId": "mannequin-node-64",
+            "gltfNodeIndex": 64,
+            "expectedName": "DEF-spine.004"
+          },
+          {
+            "instanceId": "mannequin-instance-65",
+            "nodeId": "mannequin-node-65",
+            "gltfNodeIndex": 65,
+            "expectedName": "DEF-spine.003"
+          },
+          {
+            "instanceId": "mannequin-instance-66",
+            "nodeId": "mannequin-node-66",
+            "gltfNodeIndex": 66,
+            "expectedName": "DEF-spine.002"
+          },
+          {
+            "instanceId": "mannequin-instance-67",
+            "nodeId": "mannequin-node-67",
+            "gltfNodeIndex": 67,
+            "expectedName": "DEF-spine.001"
+          },
+          {
+            "instanceId": "mannequin-instance-68",
+            "nodeId": "mannequin-node-68",
+            "gltfNodeIndex": 68,
+            "expectedName": "DEF-spine"
+          },
+          {
+            "instanceId": "mannequin-instance-69",
+            "nodeId": "mannequin-node-69",
+            "gltfNodeIndex": 69,
+            "expectedName": "Rayzee_Mannequin"
+          },
+          {
+            "instanceId": "mannequin-instance-70",
+            "nodeId": "mannequin-node-70",
+            "gltfNodeIndex": 70,
+            "expectedName": "Rigged Human Mannequin man (Rigify)"
+          }
+        ]
+      },
+      {
+        "asset": {
+          "assetId": "local-fixture-led",
+          "version": "fixture-1"
+        },
+        "nodes": [
+          {
+            "instanceId": "led-root",
+            "nodeId": "led-root",
+            "gltfNodeIndex": null,
+            "expectedName": null
+          },
+          {
+            "instanceId": "led-instance-0",
+            "nodeId": "led-node-0",
+            "gltfNodeIndex": 0,
+            "expectedName": "QuadWall"
+          }
+        ]
+      }
+    ],
+    "humanPoseRoots": [
+      "mannequin-root"
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rayzee-student-disabled",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-07-30",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  // Default and hosted configurations intentionally cannot serve student data.
+  // No real account identifiers or credentials belong in this file.
+  "vars": { "ENVIRONMENT": "disabled", "ENABLE_DRAFT_API": "false", "ENABLE_CATALOGUE_API": "false", "ENABLE_HOSTED_ADMIN_AUTH": "false" },
+  "env": {
+    "local": {
+      "name": "rayzee-student-local",
+      "vars": {
+        "ENVIRONMENT": "local", "ENABLE_HOSTED_ADMIN_AUTH": "false", "ENABLE_DRAFT_API": "true", "ENABLE_CATALOGUE_API": "true", "MAX_LIBRARY_ASSET_BYTES": "67108864", "ALLOW_LOCAL_GEO_EXEMPTION": "true",
+        "MAX_JSON_BYTES": "1048576", "MAX_NARRATION_BYTES": "16777216",
+        "MAX_DRAFT_REVISIONS": "10000", "MAX_DRAFT_MEDIA": "100",
+        "MAX_DRAFT_CREATIONS_PER_MINUTE": "30"
+      },
+      "d1_databases": [{ "binding": "DB", "database_name": "student-local-only", "database_id": "00000000-0000-0000-0000-000000000001", "migrations_dir": "migrations", "remote": false }, { "binding": "ADMIN_AUTH_DB", "database_name": "student-local-only", "database_id": "00000000-0000-0000-0000-000000000001", "remote": false }],
+      "r2_buckets": [{ "binding": "DOCUMENTS", "bucket_name": "student-local-documents", "remote": false }, { "binding": "NARRATION", "bucket_name": "student-local-narration", "remote": false }, { "binding": "LIBRARY", "bucket_name": "student-local-library", "remote": false }]
+    },
+    "test": {
+      "name": "rayzee-student-test",
+      "vars": { "ENVIRONMENT": "test", "ENABLE_HOSTED_ADMIN_AUTH": "false", "ENABLE_DRAFT_API": "true", "ENABLE_CATALOGUE_API": "true", "MAX_LIBRARY_ASSET_BYTES": "67108864", "ALLOW_LOCAL_GEO_EXEMPTION": "true", "MAX_JSON_BYTES": "1048576", "MAX_NARRATION_BYTES": "16777216", "MAX_DRAFT_REVISIONS": "10000", "MAX_DRAFT_MEDIA": "100", "MAX_DRAFT_CREATIONS_PER_MINUTE": "30" },
+      "d1_databases": [{ "binding": "DB", "database_name": "student-test-only", "database_id": "00000000-0000-0000-0000-000000000002", "migrations_dir": "migrations", "remote": false }, { "binding": "ADMIN_AUTH_DB", "database_name": "student-test-only", "database_id": "00000000-0000-0000-0000-000000000002", "remote": false }],
+      "r2_buckets": [{ "binding": "DOCUMENTS", "bucket_name": "student-test-documents", "remote": false }, { "binding": "NARRATION", "bucket_name": "student-test-narration", "remote": false }, { "binding": "LIBRARY", "bucket_name": "student-test-library", "remote": false }]
+    },
+    "preview": {
+      "name": "rayzee-student-preview-disabled",
+      "vars": { "ENVIRONMENT": "preview", "ENABLE_DRAFT_API": "false", "ENABLE_CATALOGUE_API": "false", "ENABLE_HOSTED_ADMIN_AUTH": "false" },
+      "d1_databases": [], "r2_buckets": []
+    },
+    "production": {
+      "name": "rayzee-student-production-disabled",
+      "vars": { "ENVIRONMENT": "production", "ENABLE_DRAFT_API": "false", "ENABLE_CATALOGUE_API": "false", "ENABLE_HOSTED_ADMIN_AUTH": "false" },
+      "d1_databases": [], "r2_buckets": []
+    }
+  }
+}

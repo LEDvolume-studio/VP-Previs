@@ -1,7 +1,9 @@
 # Rayzee Path Tracer - TODO List
 
 ## Bugs
-
+- final render transmission bounces not sufficient
+- remove all hacks on rectarealight parsing and treat all the incoming serailized data
+- directional lights physical accuracy
 
 ### MVP
 - [ ] dynamic max stack in bvhtraversal
@@ -10,14 +12,12 @@
 - [ ] tiled output for lower vram — Blender Cycles-style render-region tiling; VRAM-bounded 4K/8K final render + video. See docs/internal/specs/wavefront-tiled-output.md
 
 ### Deferred
-- Reconsider continuous viewport denoising. 512²/fast is now 20 ms of library time; the old feasibility audit set the bar at ≤15 ms when TFJS made it 3–4× slower. Close enough to reopen, but it's a project, not a task — the blockers that audit found were in our cadence code (frozen frameCount during interaction, reset() aborting to tile 0), not the library.
 
 Dead ends already closed, no action: kernel overrides (auto → FP16 Direct is fastest on Apple; Spatial is 0.57×), engine: 'webnn' (no WebGPU interop in Chrome), modelSpec (our blobs validate against the built-ins), dynamicTile (correctly pinned off).
 
 
 ### Known
 
-- [x] ~~Tier-2 frozen pixels keep folding stale `rayBuffer` samples into their own m2/variance every frame~~ — fixed with a `wasFrozen` guard on the m2 mix, mirroring how `finalColor` is already handled two lines above. **Worse than recorded**: the `converged` bit built from that variance is counted into `CONVERGED_COUNT`, so the corruption reached the whole-frame early stop, not just the pixel's own estimate. Measured via `bench freeze`: run-to-run spread of the freeze ratio roughly halved on both gated scenes (spheres-gradient 6.5 % → 3.6 %, cornell-emissive 2.8 % → 1.5 %) with ratios marginally better too. ⚠️ **The hypothesis that this explained `alpha-cutout`'s instability is DISPROVEN** — it went 36.7 % → 51.9 % across five runs, i.e. still chaotic; that scene's freeze behaviour remains unexplained. Editing this kernel at all costs 11 quality goldens their bit-identical status at rmse ~1e-4 (measured identical for `select()` and for an `If()` branch, so it is compiler scheduling rather than the extra arm) — all baselines re-blessed, back to 24/24 bit-identical.
 - [ ] `usePixelFreeze` is inert on 24155522.glb — bit-identical to uniform at 150 spp, nothing reaches `pixelFreezeThreshold` 0.02, so the shipping adaptive default saves nothing on real interiors
 - [ ] indirect lights looks too weak
 - [ ] `thickness` is inert, so every transmissive surface is treated as a volume boundary. glTF uses `thicknessFactor == 0` to mean **thin-walled** — no refraction, tint once, attenuation ignored. A hollow thin-walled shell therefore tints baseColor at every interface crossed (4x on the Gelatinous Cube: blue 0.168^4 = 0.0008, renders black). Fix = branch on thickness, and re-add the Thickness control with a scene-relative range (three.js specifies it in local space x model scale), not the old 0..1 slider. gap-plan Phase 4.4.
@@ -42,6 +42,33 @@ Dead ends already closed, no action: kernel overrides (auto → FP16 Direct is f
 - [ ] minimize unwanted dependencies - <https://github.com/atul-mourya/RayTracing/network/dependencies>
 - [ ] open issues by threejs <https://github.com/mrdoob/three.js/issues/32969> and 33061
 
+### DLSS super resolution
+
+- [ ] **Try a non-2x scale ratio.** The 2x is a limit of the *port*, not of DLSS: NVIDIA's quality
+  levels are render-scale percentages (Quality 67 %, Balanced 58 %, Performance 50 %, Ultra 33 %) and
+  the preset "will not vary even if scaling ratio varies" — OptiScaler runs the same DLL from 1.01 to
+  3.00. But this WebGPU port implements only the 2x path: its kernels are `upsample2x`,
+  `upsample2x_padded`, `upsample_2x_crop`, `downsample_2x`, with ~90 hardcoded `*2u` / `/4u` ratio
+  assumptions, and `output = input * 2` fixed in the geometry function. The WGSL *is* templated on
+  `INPUT_SIZE` / `OUTPUT_SIZE` / `NETWORK_SIZE`, so patching the geometry to e.g. 1.5x will at least
+  build — the question is whether the fixed-2x upsample kernels then produce a correct image or
+  garbage. ~15 min to settle empirically instead of by inference. Expect it to break.
+- [ ] **8192 output is not reachable, measured.** Two independent walls, both above 4096 output:
+  the runtime allocates a "retained history" plane at **4x the input dimension** and requests no
+  raised limit, so >2048 input exceeds the default `maxTextureDimension2D` of 8192 (the adapter
+  supports 16384 — patching its `requestDevice` would lift this); and its "arbitrary exposure" pass
+  dispatches `ceil(w*h/256)` workgroups in X, so 4096² input asks for 65,536 against WebGPU's 65,535
+  — **one over**, which no limit raise fixes. So square 8192 is unreachable, and a non-square 8192
+  (e.g. 4096x2160 in) would need the texture-limit patch. `SR_MAX_INPUT` is now 2048 with an early,
+  explanatory throw, because past it the runtime failed late as an unrelated invalid bind group.
+- [ ] `DLSS_NR_MAX_PIXELS` (4.19 MP) is now unreachable: the pass runs at render size, and
+  `MAX_STORAGE_TEXTURE_SIZE` already caps that at 2048. It stays as a floor under a raised reserve.
+  If the reserve is ever raised, re-measure before trusting it — 4x the pixels cost 10-17x the wall
+  clock, which looks like memory pressure, so a tiled detail pass would be the lever.
+- [ ] Preset **K** weights (newer transformer preset, reportedly cleaner in motion than the hosted
+  **J**). Not a setting — a separate extraction from a newer `nvngx_dlss.dll`, which needs the demo
+  author's tooling, so this is blocked unless they publish it.
+
 ### Regression bench (`bench/`)
 
 - [ ] robust dispersion (MAD, not sd) for the A/B noise floor — one wild round currently makes ~1/3 of scenes report `inconclusive`
@@ -51,11 +78,11 @@ Dead ends already closed, no action: kernel overrides (auto → FP16 Direct is f
 - [ ] CPU-side vitest guards: shader-recompile contract, BVH structural invariants, feature-combo compile smoke
 - [ ] trend dashboard over `bench/baselines/perf.jsonl`
 - [ ] corpus gap: skeletal/morph animation — needs a committed .glb, which the all-procedural rule cannot supply
-- [x] ~~coverage gap: the Tier-2 list-driven generate path is never exercised~~ — closed by `bench freeze` (`bench/runner/freeze.js`): two renders per scene differing only in `usePixelFreeze`, gated on `RMSE vs truth, frozen ÷ unfrozen`. Three things had to be got right, each of which a first attempt got wrong and a seeded fault exposed. (1) Both arms keep deterministic mode ON — leaving it restores the dispatch heuristics, which move up to **12 % of pixels between two identical runs**, and a seeded fault that disabled freeze entirely still passed. (2) Thresholds are deliberately loosened to 0.10/4: at the shipping 0.02/8 freeze is **measurably inert** (0.00 % of pixels move on every corpus scene), confirming the standing note above, so a rung there would compare a render against itself forever. (3) An explicit engagement assertion (≥0.2 % of pixels must move), because "barely moved" and "never ran" are otherwise indistinguishable. Mutation-tested both ways: a no-op freeze trips the engagement check on every scene, an over-eager one trips the ratchet by +26 %/+94 %. **`alpha-cutout` was dropped after measurement** — its ratio swings 69.6 % across five identical runs, so no stable ratchet there has any detection power; that instability is itself unexplained and may be worth a look.
 
 
 ### General
 
+- [ ] headless usage to be vsync bound free
 - [ ] deno compile for dedicated destop app
 - [ ] Introduce Project based workflow
 - [ ] Save rendering state in local storage and load on app start
@@ -75,7 +102,6 @@ Dead ends already closed, no action: kernel overrides (auto → FP16 Direct is f
 - [ ] Realistic sky rendering (Volumetric atmosphere and clouds)
 - [ ] Volumetric rendering
 - [ ] Caustic support - Photon mapping &/ BDPT
-- [ ] Realtime OIDN denoising with WebGPU compute shader implementation
 - [ ] Normal-dependent MIS compensation (Karlík et al. 2019, Eq. 13) — precompute 512 compensated env map CDFs indexed by surface normal for ~19% improvement over current normal-independent compensation on diffuse+HDR scenes
 - [ ] ReSTIR DI (Bitterli et al. 2020) — spatiotemporal resampling for many-light scenes
 - [ ] https://cloud.needle.tools/hdris FastHDR
@@ -106,6 +132,7 @@ Dead ends already closed, no action: kernel overrides (auto → FP16 Direct is f
 
 ### Animation
 
+- [ ] add support for animations in pbrt
 - [ ] animating lights support
 - [ ] Timeline scrubber for animation control
 - [ ] Camera animation - interpolate camera path keyframes during video render
@@ -124,7 +151,6 @@ Dead ends already closed, no action: kernel overrides (auto → FP16 Direct is f
 
 ### BVH
 
-- [ ] Object-space triangles + instance transform buffer for true instancing
 - [ ] GPU compute refit via compute shader (level-by-level dispatch with barriers; replaces worker + SharedArrayBuffer path)
 - [ ] Background BLAS rebuild after refit when SAH quality degrades
 - [ ] Compact Wide BVH (CWBVH) — 4/8-way branching for GPU traversal
@@ -137,6 +163,8 @@ Dead ends already closed, no action: kernel overrides (auto → FP16 Direct is f
 
 ## Experiments
 
+- [ ] explore OpenColorIO OCIO color management
+- [ ] Neural-texture-compression <https://syllogi-graphikon.vercel.app/posts/metal-neural-texture-compression/>
 - [ ] Offscreen canvas rendering - <https://threejs.org/manual/#en/offscreencanvas>
 - [ ] Ray-Guiding based on Octahedron Mapping CDF
 - [ ] Full Disney BSDF
@@ -170,10 +198,11 @@ Dead ends already closed, no action: kernel overrides (auto → FP16 Direct is f
 
 ## AI Integration
 
+- [ ] POC DLSS <https://t.co/frqdwHzeDv>
 - [ ] Explore AI-driven denoising techniques beyond OIDN
 - [ ] <https://upscalerjs.com/models/>
 - [ ] <https://enhance.addy.ie/>
-- [ ] NRD - Nvidia Realtime Denoiser
+- [x] NRD - Nvidia Realtime Denoiser (ReBLUR port, `Stages/NRD.js`; diffuse/specular signal split still open — see `docs/NRD_DENOISER.md`)
 
 ## AI Upscaler
 

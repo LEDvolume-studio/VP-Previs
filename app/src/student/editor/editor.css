@@ -1,0 +1,185 @@
+:root { color-scheme: dark; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0b1118; color: #e9edf4; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, select { font: inherit; }
+.sim-editor { height: 100dvh; min-height: 650px; min-width: 1000px; display: flex; flex-direction: column; overflow: hidden; background: radial-gradient(ellipse at 30% 0%, #17253355, transparent 60%), #0b1118; font-size: 13px; }
+.sim-editor button, .sim-editor select { border: 1px solid #2c3d50; background: linear-gradient(#1b2734, #131c27); color: #edf2f7; border-radius: 6px; cursor: pointer; }
+.sim-editor button { padding: 8px 12px; display: inline-flex; gap: 8px; align-items: center; justify-content: center; }
+.sim-editor button:hover:not(:disabled) { background: #23364b; border-color: #5a7897; }
+.sim-editor button:disabled, .sim-editor select:disabled, .sim-editor input:disabled { opacity: .38; cursor: default; }
+.sim-editor button:focus-visible, .sim-editor input:focus-visible, .sim-editor select:focus-visible { outline: 2px solid #73b0ff; outline-offset: 2px; }
+.sim-editor button.sim-primary { background: #2e7cf5; border-color: #498eff; box-shadow: inset 0 1px #ffffff15; }
+.sim-editor a { color: #8abbff; text-decoration: none; }
+.sim-editor h2 { display: flex; gap: 10px; align-items: center; font-size: 16px; margin: 0; font-weight: 650; }
+.sim-editor .sim-subtle { color: #93a6ba; font-size: 12px; line-height: 1.7; }
+.sim-header { height: 64px; flex-shrink: 0; display: flex; gap: 24px; padding: 0 20px; align-items: center; border-bottom: 1px solid #2a3b4e; background: linear-gradient(110deg, #182330, #101922); }
+.sim-brand { display: flex; align-items: center; gap: 12px; color: #f1f5fa !important; font-size: 25px; white-space: nowrap; }
+.sim-brand-mark { width: 34px; height: 34px; position: relative; display: block; }
+.sim-brand-mark i { position: absolute; width: 24px; height: 12px; background: #388cff; transform: skew(-34deg); border-radius: 3px; top: 3px; left: 6px; }
+.sim-brand-mark i + i { top: 19px; left: 0; background: #2265d8; }
+.sim-project-menu { position: relative; border-left: 1px solid #344357; padding-left: 24px; }
+.sim-editor .sim-project-button { background: none; border: 0; gap: 20px; font-size: 18px; padding: 8px 0; max-width: 240px; }
+.sim-project-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-save { border-left: 1px solid #344357; padding-left: 22px; display: flex; align-items: center; gap: 10px; color: #a6bdd7; font-size: 12px; }
+.sim-save svg { color: #82aecc; }
+.sim-save.is-error { color: #ffb5a8; }
+.sim-header-actions { margin-left: auto; display: flex; gap: 12px; }
+.sim-header-actions > button { min-height: 39px; padding: 8px 20px; }
+.sim-editor button.sim-icon-button { background: none; border: none; padding: 8px; }
+.sim-menu { position: absolute; left: 12px; top: 46px; min-width: 280px; max-height: 65vh; overflow-y: auto; z-index: 30; padding: 8px; background: #14212d; border: 1px solid #344b64; border-radius: 10px; box-shadow: 0 12px 40px #0008; }
+.sim-menu p { color: #859ab0; font-size: 11px; padding: 4px 8px; text-transform: uppercase; letter-spacing: .08em; }
+.sim-menu button { width: 100%; justify-content: flex-start; text-align: left; border: 0; background: none; }
+.sim-menu hr { border: 0; border-top: 1px solid #2b3e50; }
+.sim-main { min-height: 0; flex: 1; display: grid; grid-template-columns: 270px minmax(300px, 1fr) 285px; gap: 8px; padding: 8px 8px 0; }
+.sim-presets, .sim-viewport, .sim-inspector { min-height: 0; border: 1px solid #182736; border-radius: 9px 9px 0 0; background: linear-gradient(120deg, #121e29, #0e1821); overflow: hidden; }
+.sim-presets { padding: 14px 12px; overflow-y: auto; display: flex; flex-direction: column; }
+.sim-presets h2 { margin-bottom: 7px; }
+.sim-gallery-heading { display: flex; justify-content: space-between; color: #a9bcd1; margin-bottom: 18px; }
+.sim-gallery-heading small { color: #708ba5; }
+.sim-preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.sim-preset-card { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.sim-editor .sim-preset-card button.sim-preset { width: 100%; }
+.sim-editor button.sim-use-scene-preset { justify-content: center; padding: 6px 3px; font-size: 10px; gap: 3px; color: #a9c7e7; }
+.sim-editor button.sim-preset { display: flex; flex-direction: column; align-items: stretch; padding: 0; gap: 0; text-align: left; overflow: hidden; position: relative; min-width: 0; border-color: #2d3c4c; background: #0b131d; }
+.sim-preset img { width: 100%; aspect-ratio: 1.08; object-fit: cover; }
+.sim-preset > span:last-child { padding: 9px 7px; min-height: 37px; font-size: 12px; line-height: 1.3; }
+.sim-editor button.sim-preset.is-selected { border-color: #398cff; box-shadow: 0 0 0 2px #398cff; }
+.sim-preset-check { position: absolute; top: 7px; right: 7px; border-radius: 50%; width: 20px; height: 20px; background: #2f85ff; display: grid; place-items: center; border: 1px solid white; }
+.sim-preset-empty { display: grid; place-items: center; height: 100px; }
+.sim-library-note { margin-top: auto; padding-top: 20px; line-height: 1.6; color: #9cb1c8; font-size: 11px; }
+.sim-library-note small { color: #73899e; }
+.sim-dot { display: inline-block; height: 6px; width: 6px; background: #59baac; border-radius: 50%; margin-right: 5px; }
+.sim-viewport { display: flex; flex-direction: column; }
+.sim-viewport-header { height: 48px; flex-shrink: 0; padding: 6px 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.sim-viewport-header > div { display: flex; gap: 8px; }
+.sim-editor button.sim-view-mode { position: relative; isolation: isolate; display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 3px; border-radius: 8px; background: #0d1823; color: #91a6bb; font-size: 11px; white-space: nowrap; }
+.sim-view-mode::before { content: ''; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 2); border-radius: 5px; background: linear-gradient(#358bff, #2165cc); box-shadow: 0 1px 4px #0005, inset 0 1px #ffffff25; transition: transform .18s ease; }
+.sim-view-mode > span { display: flex; gap: 6px; align-items: center; justify-content: center; padding: 6px 10px; transition: color .18s ease; }
+.sim-view-mode .is-active { color: #fff; }
+.sim-view-mode[aria-checked="true"]::before { transform: translateX(100%); }
+@media (prefers-reduced-motion: reduce) { .sim-view-mode::before, .sim-view-mode > span { transition: none; } }
+.sim-viewport-header select { padding: 7px 9px; font-size: 12px; }
+.sim-stage { flex: 1; min-height: 0; position: relative; background: #0a1119; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+#sim-viewport-host { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+#sim-viewport-host canvas { width: 100%; height: 100%; object-fit: contain; touch-action: none; }
+.sim-loading { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; gap: 18px; align-items: center; justify-content: center; color: #a9bed3; background: #101b25e8; }
+.sim-loading strong { font-weight: 500; font-size: 13px; }
+.sim-view-tools { position: absolute; right: 85px; top: 14px; display: flex; border: 1px solid #ffffff1f; background: #101a20c9; border-radius: 8px; overflow: hidden; }
+.sim-view-tools > span, .sim-view-tools button { display: grid; place-items: center; width: 38px; height: 38px; border: 0; background: transparent; color: #d5e0e9; padding: 6px; }
+.sim-axis { position: absolute; top: 18px; right: 18px; width: 48px; height: 58px; font-size: 10px; font-weight: 700; text-shadow: 0 1px 3px #000; }
+.sim-axis i { position: absolute; background: #a8bac8; height: 21px; width: 21px; left: 14px; top: 22px; transform: rotate(30deg) skew(0deg, -10deg); box-shadow: inset -6px -3px #748b9d; }
+.sim-axis-y { position: absolute; left: 20px; top: 0; color: #5de783; }
+.sim-axis-x { position: absolute; right: 0; bottom: 0; color: #ff6c6e; }
+.sim-axis-z { position: absolute; left: 0; bottom: 0; color: #68a0ff; }
+.sim-shot-label { position: absolute; left: 14px; bottom: 14px; max-width: 85%; padding: 10px 13px; background: #111820b8; border: 1px solid #ffffff12; border-radius: 7px; font-size: 12px; }
+.sim-shot-label small { display: block; color: #8fc6ff; margin-top: 5px; font-size: 11px; }
+.sim-navigation-status { display: flex; justify-content: space-between; gap: 10px; color: #8099b1; padding: 7px 10px; font-size: 10px; background: #0f1a24; }
+.sim-navigation-status small { font-size: 10px; color: #698298; }
+.sim-inspector { padding: 0 14px 12px; overflow-y: auto; }
+.sim-inspector-heading { height: 48px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2d3e50; }
+.sim-inspector-heading h2 { font-size: 16px; }
+.sim-inspector-shot { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 10px; }
+.sim-inspector-shot strong { font-size: 15px; margin: 0; }
+.sim-inspector-shot button { padding: 4px; background: none; border: 0; }
+.sim-inspector-section { padding: 12px 0; border-bottom: 1px solid #293b4d; display: grid; gap: 11px; }
+.sim-inspector-section h3 { font-size: 12px; display: flex; gap: 7px; align-items: center; margin: 0; }
+.sim-inspector-control { display: grid; gap: 7px; }
+.sim-inspector-label { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #b4c6da; font-size: 12px; }
+.sim-inspector-value { display: flex; gap: 4px; align-items: center; padding: 3px 7px; border: 1px solid #2a3d51; border-radius: 5px; background: #101c27; color: #d1deec; }
+.sim-inspector input[type=number] { background: transparent; border: 0; color: #dbe8f6; width: 52px; padding: 0; text-align: right; font-size: 12px; -moz-appearance: textfield; }
+.sim-inspector input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.sim-editor input[type=range] { accent-color: #3889ff; width: 100%; height: 15px; cursor: pointer; margin: 0; }
+.sim-inspector-note { color: #71899f; font-size: 10px; line-height: 1.5; margin: 2px 0; }
+.sim-inspector-select { width: 100%; padding: 6px; color: #bfd1e5; font-size: 11px; }
+.sim-inspector-toggle { display: flex; align-items: center; justify-content: space-between; color: #b9cadb; font-size: 12px; gap: 8px; }
+.sim-inspector-pose-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.sim-inspector-pose-grid button { font-size: 10px; padding: 7px; flex: 1; }
+.sim-inspector-pose-grid button[aria-pressed=true] { background: #2878ed; }
+.sim-inspector-empty { font-size: 12px; color: #839ab2; padding: 15px 0; }
+.sim-inspector-error { color: #ffb7a6; font-size: 11px; }
+.st-timeline { display: flex; flex-direction: column; flex-shrink: 0; border-top: 1px solid #2c4055; background: linear-gradient(#111c27, #0b141d); position: relative; overflow: hidden; }
+.st-timeline-toolbar { height: 49px; flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid #293b4d; }
+.st-timeline-toolbar h2 { font-size: 16px; }
+.st-timeline-controls { display: flex; align-items: center; gap: 5px; }
+.st-timeline-controls button { padding: 6px 8px; border: 0; background: none; }
+.st-timeline-toolbar label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+.st-timeline-toolbar input[type=range] { width: 80px; }
+.st-timeline-toolbar button { font-size: 12px; }
+.st-timeline-scroll { overflow-x: auto; overflow-y: hidden; flex: 1; min-height: 0; margin-left: 140px; overscroll-behavior-x: contain; border-left: 1px solid #263c50; scrollbar-color: #304961 #101b26; scrollbar-width: thin; }
+.st-timeline-content { position: relative; min-width: 100%; height: 100%; display: flex; flex-direction: column; }
+.st-timeline-ruler { position: relative; height: 31px; flex-shrink: 0; border-bottom: 1px solid #2c4051; user-select: none; cursor: crosshair; }
+.st-timeline-ruler span { position: absolute; height: 100%; border-left: 1px solid #526a81; padding: 0 3px; font-size: 10px; color: #a3b7ca; }
+.st-timeline-track { position: relative; flex: 1; min-height: 48px; }
+.st-timeline-clip { position: absolute; top: 6px; height: calc(100% - 12px); border: 1px solid #3b5267; border-radius: 5px; overflow: hidden; background: #1c2a36; cursor: grab; }
+.st-timeline-clip.is-selected { border: 2px solid #378bff; box-shadow: 0 0 0 1px #378bff; }
+.st-timeline-clip.is-dragging { opacity: .5; }
+.sim-editor .st-timeline-clip-select { padding: 0; display: block; position: relative; width: 100%; height: 100%; border: 0; border-radius: 0; text-align: left; }
+.st-timeline-clip img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.st-timeline-clip-label { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 6px 8px; background: #0a111cdd; font-size: 11px; white-space: nowrap; overflow: hidden; }
+.st-timeline-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 9px; cursor: ew-resize; touch-action: none; background: #4795ff66; z-index: 2; }
+.st-timeline-resize::after { content: ''; position: absolute; height: 24px; width: 3px; border-radius: 2px; background: #d4e8ff; top: 16px; right: 3px; }
+.st-timeline-playhead { position: absolute; top: 0; bottom: 0; width: 2px; z-index: 4; background: #80b9ff; pointer-events: none; }
+.st-timeline-playhead::before { content: ''; position: absolute; top: 0; left: -5px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 10px solid #d4e9ff; }
+.st-timeline-voiceover { position: relative; height: 50px; flex-shrink: 0; overflow: hidden; border-top: 1px solid #263b4c; background: #09141b; }
+.st-timeline-voiceover-empty { height: 100%; display: flex; gap: 10px; align-items: center; color: #6d8b9f; font-size: 11px; padding: 0 15px; }
+.st-timeline-narration { position: absolute; top: 8px; height: 34px; padding: 7px; background: #156e61; border: 1px solid #42b4a0; color: #c1ede2; border-radius: 4px; white-space: nowrap; font-size: 10px; }
+.st-timeline-track-label { position: absolute; left: 10px; width: 120px; height: 75px; display: flex; gap: 9px; align-items: center; font-size: 12px; font-weight: 600; }
+.st-timeline-track-label.shots { top: 82px; }
+.st-timeline-track-label.voiceover { top: 165px; height: 44px; }
+.st-timeline-footer { height: 26px; padding: 5px 16px; color: #738fa5; font-size: 10px; border-top: 1px solid #203345; }
+.sim-footer { height: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #7790a7; font-size: 10px; }
+.sim-error { flex-shrink: 0; background: #44292c; color: #ffd4cb; padding: 8px 16px; display: flex; gap: 10px; align-items: center; font-size: 12px; }
+.sim-error span { flex: 1; }
+.sim-error button { padding: 4px 8px; font-size: 11px; }
+.sim-empty-note { color: #7c93aa; line-height: 1.6; }
+.sim-dialog-backdrop { position: fixed; inset: 0; z-index: 50; background: #03090dbb; backdrop-filter: blur(5px); display: grid; place-items: center; }
+.sim-dialog { padding: 28px; background: #13212e; border: 1px solid #3b5268; border-radius: 12px; max-width: 480px; position: relative; box-shadow: 0 20px 100px #0007; }
+.sim-dialog h2 { font-size: 20px; padding-right: 25px; margin-bottom: 16px; }
+.sim-dialog p { color: #b3c6d9; line-height: 1.7; }
+.sim-dialog-close { position: absolute; top: 14px; right: 14px; }
+.sim-dialog-label { display: grid; gap: 8px; color: #9bb3ca; }
+.sim-dialog-label input { padding: 9px; background: #09151f; border: 1px solid #3c536a; color: #e0ecf7; border-radius: 4px; }
+.sim-spin { animation: sim-spin 1.2s linear infinite; }
+@keyframes sim-spin { to { transform: rotate(360deg); } }
+@media (max-width: 1250px) { .sim-main { grid-template-columns: 220px minmax(300px, 1fr) 260px; } .sim-header { gap: 15px; } .sim-save { font-size: 10px; padding-left: 12px; } .sim-navigation-status small { display: none; } }
+@media (max-height: 800px) { .sim-preset img { aspect-ratio: 1.5; } .sim-library-note { padding-top: 10px; } }
+.st-timeline-tools { display: flex; align-items: center; gap: 2px; border-right: 1px solid #2b3c4d; padding-right: 12px; }
+.st-timeline-tools button { border: 0; background: transparent; padding: 6px 9px; }
+.st-timeline-snap { margin-left: 8px; }
+.sim-editor .st-timeline-play { background: #287df9; border-radius: 50%; width: 37px; height: 37px; color: white; }
+.st-timeline-controls { margin: auto; }
+.st-timeline-controls output { min-width: 130px; margin-left: 12px; color: #e6eef9; font-variant-numeric: tabular-nums; font-size: 12px; }
+.st-timeline-controls output span { color: #829bb4; }
+.sim-editor .st-timeline-add { background: #287df9; border-color: #488dff; }
+.st-timeline-footer { height: 30px; flex-shrink: 0; display: flex; gap: 15px; align-items: center; padding: 0 14px; }
+.st-timeline-footer button { padding: 3px 8px; font-size: 10px; background: none; border: 0; }
+.st-timeline-zoom { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.st-timeline-zoom input[type=range] { width: 80px; }
+.st-timeline-zoom output { width: 32px; }
+.st-timeline-voiceover > .st-timeline-track-label { display: none; }
+.st-timeline-audio-clip { position: absolute; top: 8px; height: 32px; background: #176b60; border: 1px solid #2e9e8a; border-radius: 4px; padding: 8px; font-size: 10px; }
+.st-timeline::before { content: '▤  Shots'; position: absolute; left: 16px; top: calc(50% + 4px); transform: translateY(-50%); pointer-events: none; color: #c7d4e2; font-weight: 600; }
+.st-timeline::after { content: '♩  Voiceover'; position: absolute; left: 16px; bottom: 49px; pointer-events: none; color: #a7bdce; font-size: 12px; }
+
+.st-timeline-height-handle { height: 8px; flex-shrink: 0; cursor: row-resize; touch-action: none; user-select: none; position: relative; background: #142230; }
+.st-timeline-height-handle::after { content: ''; position: absolute; width: 44px; height: 3px; left: calc(50% - 22px); top: 2px; border-radius: 3px; background: #526f88; }
+.st-timeline-height-handle:hover, .st-timeline-height-handle:focus-visible, .st-timeline.is-resizing .st-timeline-height-handle { background: #254360; outline: none; box-shadow: inset 0 1px #559eee; }
+.st-timeline.is-resizing { user-select: none; }
+
+.sim-appearance-update { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 7px 16px; color: #a9c7e6; background: #172e43; font-size: 12px; flex-shrink: 0; }
+.sim-appearance-update button { font-size: 12px; padding: 5px 10px; }
+
+.st-timeline-audio-clip { display:flex; align-items:center; gap:6px; padding:4px 12px; min-width:20px; touch-action:none; cursor:grab; user-select:none; overflow:hidden; }
+.st-timeline-audio-clip > span:not(.st-audio-trim) { overflow:hidden; white-space:nowrap; flex:1; }
+.st-timeline-audio-clip:focus-within { outline:2px solid #73d9c7; outline-offset:1px; }
+.st-timeline-audio-clip button { padding:2px; border:0; background:#123e38; color:white; cursor:pointer; }
+.st-audio-trim { position:absolute; top:0; bottom:0; width:8px; background:#59ccb177; cursor:ew-resize; touch-action:none; }
+.st-audio-trim.left { left:0; } .st-audio-trim.right { right:0; }
+.st-shot-delete { position:absolute; right:12px; top:4px; padding:3px; border:0; background:#07131ecc; color:#d0deea; z-index:2; }
+.st-timeline-footer .is-recording { color:#ff8989; font-weight:600; }
+.sim-blur-compare { width:100%; padding:8px; border:1px solid #345466; border-radius:5px; background:#193548; color:#e1edf5; cursor:pointer; }
+.sim-blur-compare:disabled { opacity:.45; cursor:default; }
+.sim-blur-results { font-size:10px; color:#c1d3df; }
+.sim-blur-results table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.sim-blur-results th, .sim-blur-results td { padding:5px 3px; text-align:right; border-bottom:1px solid #29404f; }
+.sim-blur-results th:first-child { text-align:left; }

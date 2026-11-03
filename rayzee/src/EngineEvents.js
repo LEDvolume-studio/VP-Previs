@@ -41,6 +41,7 @@ export const EngineEvents = {
 
 	// Settings
 	SETTING_CHANGED: 'engine:settingChanged',
+	PATH_TRACER_ENABLED_CHANGED: 'engine:pathTracerEnabledChanged',
 
 	// Animation
 	ANIMATION_STARTED: 'engine:animationStarted',

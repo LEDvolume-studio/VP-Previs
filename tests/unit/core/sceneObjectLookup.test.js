@@ -3,8 +3,8 @@
  * engine renders for it — for an appended Object3D that is the engine's copy, not the caller's.
  * Called off the prototype so the test needs no GPU-backed instance.
  */
-import { describe, expect, it } from 'vitest';
-import { Group, Scene } from 'three';
+import { describe, expect, it, vi } from 'vitest';
+import { BoxGeometry, Group, Mesh, Scene } from 'three';
 import { PathTracerApp } from '@/core/PathTracerApp.js';
 
 const getSceneObject = ( meshScene, id ) =>
@@ -37,6 +37,59 @@ describe( 'PathTracerApp.getSceneObject', () => {
 
 		expect( getSceneObject( new Scene(), 'nope' ) ).toBe( null );
 		expect( getSceneObject( null, 'nope' ) ).toBe( null );
+
+	} );
+
+} );
+
+describe( 'PathTracerApp.unloadScene', () => {
+
+	it( 'removes appended project models as well as the primary model', () => {
+
+		const app = Object.create( PathTracerApp.prototype );
+		const meshScene = new Scene();
+		const floor = new Group();
+		const primary = new Group();
+		const appended = new Group();
+		appended.userData.__rayzeeSceneObject = true;
+		meshScene.add( floor, primary, appended );
+		app.isInitialized = true;
+		app.meshScene = meshScene;
+		app.stages = {};
+		app.reset = vi.fn();
+		app.assetLoader = {
+			floorPlane: floor,
+			targetModel: primary,
+			removeModelRoot: root => root.removeFromParent(),
+			releaseTargetModel() {
+
+				this.targetModel?.removeFromParent();
+				this.targetModel = null;
+
+			},
+		};
+
+		app.unloadScene();
+
+		expect( meshScene.children ).toEqual( [ floor ] );
+		expect( app.assetLoader.targetModel ).toBeNull();
+
+	} );
+
+} );
+
+describe( 'PathTracerApp.getEditorMeasurement', () => {
+
+	it( 'reports selected object dimensions in the saved Y-up axes', () => {
+
+		const selectedObject = new Mesh( new BoxGeometry( 2, 4, 6 ) );
+		selectedObject.name = 'Test box';
+		const measurement = PathTracerApp.prototype.getEditorMeasurement.call( {
+			interactionManager: { selectedObject },
+		} );
+
+		expect( measurement ).toEqual( { label: 'Test box', x: 2, y: 4, z: 6 } );
+		selectedObject.geometry.dispose();
 
 	} );
 

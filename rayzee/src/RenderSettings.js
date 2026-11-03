@@ -1,5 +1,6 @@
 import { EventDispatcher, Color, Vector2, MathUtils } from 'three';
 import { ENGINE_DEFAULTS } from './EngineDefaults.js';
+import { dofModeId } from './DepthOfField.js';
 import { EngineEvents } from './EngineEvents.js';
 import { ISSUE_CODES } from './EngineIssues.js';
 
@@ -40,6 +41,9 @@ const SETTING_ROUTES = {
 	aperture: { uniform: 'aperture', reset: true },
 	apertureScale: { uniform: 'apertureScale', reset: true },
 	anamorphicRatio: { uniform: 'anamorphicRatio', reset: true },
+	unitsPerMetre: { uniform: 'unitsPerMetre', reset: true },
+	dofMode: { handler: 'handleDofMode', reset: true },
+	dofBlur: { uniform: 'dofBlur', reset: true },
 	samplingTechnique: { uniform: 'samplingTechnique', reset: true },
 	fireflyThreshold: { uniform: 'fireflyThreshold', reset: true },
 	enableAlphaShadows: { uniform: 'enableAlphaShadows', reset: true },
@@ -182,12 +186,19 @@ export class RenderSettings extends EventDispatcher {
 
 				if ( ! isPanorama ) return;
 
-				// ASVGF is driven entirely by MotionVector, which unprojects through
-				// projectionMatrixInverse — meaningless once every pixel is its own direction.
-				// Fall back to the spatial-only denoiser rather than leaving no strategy.
-				if ( denoisingManager?.denoiserStrategy === 'asvgf' ) denoisingManager.setDenoiserStrategy( 'edgeaware' );
+				// MotionVector unprojects through projectionMatrixInverse, which is meaningless once
+				// every pixel is its own direction. Fall back to the spatial-only denoiser rather
+				// than leaving no strategy.
+				if ( denoisingManager?.requiresMotionVectors ) denoisingManager.setDenoiserStrategy( 'edgeaware' );
 				// Auto-focus raycasts via Raycaster.setFromCamera, which only knows the frustum.
-				cameraManager?.setAutoFocusMode( 'manual' );
+				if ( ( this.get( 'dofMode' ) ?? 'legacy' ) === 'legacy' ) cameraManager?.setAutoFocusMode( 'manual' );
+
+			},
+
+			handleDofMode: value => {
+
+				stages.pathTracer?.setUniform( 'dofMode', dofModeId( value ) );
+				cameraManager?.resetAutoFocus?.();
 
 			},
 

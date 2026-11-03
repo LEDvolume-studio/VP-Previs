@@ -8,17 +8,17 @@
 export const generateViewportStyles = ( canvasWidth, canvasHeight, viewportScale ) => {
 
 	const wrapperStyle = {
-		width: `${canvasWidth}px`,
-		height: `${canvasHeight}px`,
-		transform: `scale(${viewportScale / 100})`,
-		transformOrigin: 'center center',
+		width: `${canvasWidth * viewportScale / 100}px`,
+		height: `${canvasHeight * viewportScale / 100}px`,
+		flex: '0 0 auto',
+		maxWidth: 'none',
 		transition: "none"
 	};
 
 	const containerStyle = {
 		position: "relative",
-		width: `${canvasWidth}px`,
-		height: `${canvasHeight}px`,
+		width: '100%',
+		height: '100%',
 		overflow: "hidden",
 		borderRadius: "5px",
 		background: "repeating-conic-gradient(rgb(128 128 128 / 20%) 0%, rgb(128 128 128 / 20%) 25%, transparent 0%, transparent 50%) 50% center / 20px 20px"
@@ -28,8 +28,10 @@ export const generateViewportStyles = ( canvasWidth, canvasHeight, viewportScale
 		position: 'absolute',
 		top: 0,
 		left: 0,
-		width: `${canvasWidth}px`,
-		height: `${canvasHeight}px`
+		width: '100%',
+		height: '100%',
+		maxWidth: 'none',
+		maxHeight: 'none'
 	};
 
 	return { wrapperStyle, containerStyle, canvasStyle };

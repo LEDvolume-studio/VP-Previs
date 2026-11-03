@@ -172,6 +172,8 @@ export class LightManager extends EventDispatcher {
 
 			}
 
+			if ( light.isPointLight || light.isSpotLight ) light.userData.radius = Number.isFinite( descriptor.radius ) ? Math.max( 0, descriptor.radius ) : 0;
+
 			if ( light.isRectAreaLight ) {
 
 				if ( Number.isFinite( descriptor.width ) ) light.width = descriptor.width;
@@ -421,6 +423,8 @@ export class LightManager extends EventDispatcher {
 			useTemperature: light.userData?.useTemperature ?? false,
 			exposure: light.userData?.exposure ?? 0
 		};
+
+		if ( light.isPointLight || light.isSpotLight ) descriptor.radius = Math.max( 0, Number( light.userData?.radius ) || 0 );
 
 		if ( light.type === 'RectAreaLight' ) {
 

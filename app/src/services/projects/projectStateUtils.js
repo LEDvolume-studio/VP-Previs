@@ -1,3 +1,5 @@
+import { applyMeshPose, isPoseMesh } from '@/utils/mannequinPoses';
+
 export function hasChangedKeys( next, previous, keys ) {
 
 	for ( const key of keys ) if ( next[ key ] !== previous[ key ] ) return true;
@@ -50,6 +52,7 @@ export function captureNodeTransform( node ) {
 		quaternion: node.quaternion.toArray(),
 		scale: node.scale.toArray(),
 		visible: node.visible,
+		...( isPoseMesh( node ) ? { pose: node.userData.rayzeePose || 'standing' } : {} ),
 	};
 
 }
@@ -59,7 +62,10 @@ export function restoreNodeTransform( node, state ) {
 	if ( state.position ) node.position.fromArray( state.position );
 	if ( state.quaternion ) node.quaternion.fromArray( state.quaternion );
 	if ( state.scale ) node.scale.fromArray( state.scale );
+	// Keep matrix-authored imports consistent with restored local TRS.
+	node.updateMatrix?.();
 	node.visible = state.visible !== false;
 	if ( state.name ) node.name = state.name;
+	if ( isPoseMesh( node ) ) applyMeshPose( node, state.pose || 'standing' );
 
 }

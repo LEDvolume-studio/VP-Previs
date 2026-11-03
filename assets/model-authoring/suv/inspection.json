@@ -1,0 +1,1926 @@
+{
+  "objects": [
+    {
+      "name": "Camera",
+      "type": "CAMERA",
+      "parent": null,
+      "location": [
+        10.585870742797852,
+        -9.967597007751465,
+        7.163610935211182
+      ],
+      "worldOrigin": [
+        10.585870742797852,
+        -9.967597007751465,
+        7.163610935211182
+      ],
+      "rotation": [
+        1.1093190908432007,
+        -4.6507988571420356e-08,
+        0.8149282336235046
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": false
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_Body",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -1.1920928955078125e-05,
+        -0.0,
+        1.213016152381897
+      ],
+      "worldOrigin": [
+        -1.1920928955078125e-05,
+        0.0,
+        1.213016152381897
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 53036,
+      "polygons": 50814,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_Body",
+      "materials": [
+        "KB3D_CEV_CarAtlas",
+        "KB3D_CEV_FeltA",
+        "KB3D_CEV_FeltB",
+        "KB3D_CEV_GlassMirror",
+        "KB3D_CEV_MidSuvExteriorBody",
+        "KB3D_CEV_PlasticTileableA",
+        "KB3D_CEV_PlasticTrimA",
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_SeatsDriverATrim",
+        "KB3D_CEV_TapesTrimA",
+        "KB3D_CEV_TranslElemMidSUV",
+        "KB3D_CEV_UndercarriageTrim",
+        "KB3D_CEV_WindowFritsTrim"
+      ],
+      "bounds": {
+        "min": [
+          -1.1796586513519287,
+          -2.8582119941711426,
+          0.2846043109893799
+        ],
+        "max": [
+          1.1796348094940186,
+          2.8582119941711426,
+          2.141427993774414
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorL",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -1.0412020683288574,
+        -0.3330821394920349,
+        1.1775926351547241
+      ],
+      "worldOrigin": [
+        -1.0412020683288574,
+        -0.3330821394920349,
+        1.1775926351547241
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 3929,
+      "polygons": 4033,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_FrontDoorL",
+      "materials": [
+        "KB3D_CEV_MidSuvExteriorBody",
+        "KB3D_CEV_PlasticTileableA",
+        "KB3D_CEV_PlasticTrimA",
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_SeatsDriverATrim",
+        "KB3D_CEV_TranslElemMidSUV"
+      ],
+      "bounds": {
+        "min": [
+          -1.3244034051895142,
+          -1.0405747890472412,
+          0.4243050813674927
+        ],
+        "max": [
+          -0.758001446723938,
+          0.3744105100631714,
+          1.9308801889419556
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_FrontDoorR",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        1.0412025451660156,
+        -0.3330821394920349,
+        1.1775927543640137
+      ],
+      "worldOrigin": [
+        1.0412025451660156,
+        -0.3330821394920349,
+        1.1775927543640137
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 3929,
+      "polygons": 4033,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_FrontDoorR",
+      "materials": [
+        "KB3D_CEV_MidSuvExteriorBody",
+        "KB3D_CEV_PlasticTileableA",
+        "KB3D_CEV_PlasticTrimA",
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_SeatsDriverATrim",
+        "KB3D_CEV_TranslElemMidSUV"
+      ],
+      "bounds": {
+        "min": [
+          0.7580015659332275,
+          -1.0405747890472412,
+          0.4243052005767822
+        ],
+        "max": [
+          1.3244034051895142,
+          0.3744105100631714,
+          1.9308803081512451
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelL",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -0.9693341255187988,
+        -1.779822826385498,
+        0.45344141125679016
+      ],
+      "worldOrigin": [
+        -0.9693341255187988,
+        -1.779822826385498,
+        0.45344141125679016
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 4316,
+      "polygons": 4350,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_FrontWheelL",
+      "materials": [
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_TiresSedans",
+        "KB3D_CEV_WheelRimsA"
+      ],
+      "bounds": {
+        "min": [
+          -1.1365681886672974,
+          -2.233264207839966,
+          0.0
+        ],
+        "max": [
+          -0.8021004796028137,
+          -1.3263814449310303,
+          0.9068828225135803
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_FrontWheelR",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        0.9693112373352051,
+        -1.779822826385498,
+        0.45344141125679016
+      ],
+      "worldOrigin": [
+        0.9693112373352051,
+        -1.779822826385498,
+        0.45344141125679016
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 4316,
+      "polygons": 4350,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_FrontWheelR",
+      "materials": [
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_TiresSedans",
+        "KB3D_CEV_WheelRimsA"
+      ],
+      "bounds": {
+        "min": [
+          0.8020771741867065,
+          -2.233264207839966,
+          0.0
+        ],
+        "max": [
+          1.1365447044372559,
+          -1.3263813257217407,
+          0.9068828225135803
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_grp",
+      "type": "EMPTY",
+      "parent": null,
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "worldOrigin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_Hatch",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -1.1920928955078125e-05,
+        2.3693134784698486,
+        1.4059834480285645
+      ],
+      "worldOrigin": [
+        -1.1920928955078125e-05,
+        2.3693134784698486,
+        1.4059834480285645
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 6828,
+      "polygons": 6573,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_Hatch",
+      "materials": [
+        "KB3D_CEV_CarsLicensePlates",
+        "KB3D_CEV_MidSuvExteriorBody",
+        "KB3D_CEV_PlasticTileableA",
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_TranslElemMidSUV"
+      ],
+      "bounds": {
+        "min": [
+          -0.8978331685066223,
+          1.9424848556518555,
+          0.8344453573226929
+        ],
+        "max": [
+          0.8978093266487122,
+          2.796142101287842,
+          1.9775216579437256
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_RearDoorL",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -0.9466328620910645,
+        0.9374918937683105,
+        1.1931655406951904
+      ],
+      "worldOrigin": [
+        -0.9466328620910645,
+        0.9374918937683105,
+        1.1931655406951904
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 2508,
+      "polygons": 2396,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_RearDoorL",
+      "materials": [
+        "KB3D_CEV_MidSuvExteriorBody",
+        "KB3D_CEV_PlasticTileableA",
+        "KB3D_CEV_PlasticTrimA",
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_SeatsDriverATrim",
+        "KB3D_CEV_TranslElemMidSUV"
+      ],
+      "bounds": {
+        "min": [
+          -1.1313202381134033,
+          0.29313015937805176,
+          0.4507935047149658
+        ],
+        "max": [
+          -0.7619451284408569,
+          1.5818536281585693,
+          1.935537576675415
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_RearDoorR",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        0.9466090202331543,
+        0.937491774559021,
+        1.1931655406951904
+      ],
+      "worldOrigin": [
+        0.9466090202331543,
+        0.937491774559021,
+        1.1931655406951904
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 2508,
+      "polygons": 2396,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_RearDoorR",
+      "materials": [
+        "KB3D_CEV_MidSuvExteriorBody",
+        "KB3D_CEV_PlasticTileableA",
+        "KB3D_CEV_PlasticTrimA",
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_SeatsDriverATrim",
+        "KB3D_CEV_TranslElemMidSUV"
+      ],
+      "bounds": {
+        "min": [
+          0.7619214653968811,
+          0.2931300401687622,
+          0.4507935047149658
+        ],
+        "max": [
+          1.1312967538833618,
+          1.5818535089492798,
+          1.935537576675415
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_RearWheelL",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -0.9693341255187988,
+        1.6934435367584229,
+        0.45344167947769165
+      ],
+      "worldOrigin": [
+        -0.9693341255187988,
+        1.6934435367584229,
+        0.45344167947769165
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 4316,
+      "polygons": 4350,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_RearWheelL",
+      "materials": [
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_TiresSedans",
+        "KB3D_CEV_WheelRimsA"
+      ],
+      "bounds": {
+        "min": [
+          -1.1365681886672974,
+          1.240002155303955,
+          2.384185791015625e-07
+        ],
+        "max": [
+          -0.8021004796028137,
+          2.1468849182128906,
+          0.9068831205368042
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_RearWheelR",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        0.9693112373352051,
+        1.6934435367584229,
+        0.45344167947769165
+      ],
+      "worldOrigin": [
+        0.9693112373352051,
+        1.6934435367584229,
+        0.45344167947769165
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 4316,
+      "polygons": 4350,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_RearWheelR",
+      "materials": [
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_TiresSedans",
+        "KB3D_CEV_WheelRimsA"
+      ],
+      "bounds": {
+        "min": [
+          0.8020771741867065,
+          1.240002155303955,
+          2.384185791015625e-07
+        ],
+        "max": [
+          1.1365447044372559,
+          2.1468849182128906,
+          0.9068831205368042
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_Shifter",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -0.007312297821044922,
+        -0.556304931640625,
+        0.8872753381729126
+      ],
+      "worldOrigin": [
+        -0.007312297821044922,
+        -0.556304931640625,
+        0.8872753381729126
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 376,
+      "polygons": 362,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_Shifter",
+      "materials": [
+        "KB3D_CEV_SeatsDriverATrim",
+        "KB3D_CEV_UndercarriageTrim"
+      ],
+      "bounds": {
+        "min": [
+          -0.05998843163251877,
+          -0.5898462533950806,
+          0.7909174561500549
+        ],
+        "max": [
+          0.04536322504281998,
+          -0.5227635502815247,
+          0.9836331605911255
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_SteeringWheel",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        0.5014243125915527,
+        -0.558230996131897,
+        1.2754658460617065
+      ],
+      "worldOrigin": [
+        0.5014243125915527,
+        -0.558230996131897,
+        1.2754658460617065
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 1433,
+      "polygons": 1426,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_SteeringWheel",
+      "materials": [
+        "KB3D_CEV_PlasticTrimA",
+        "KB3D_CEV_SeatsDriverATrim"
+      ],
+      "bounds": {
+        "min": [
+          0.2661682367324829,
+          -0.6802562475204468,
+          1.0537981986999512
+        ],
+        "max": [
+          0.7366803884506226,
+          -0.43620577454566956,
+          1.497133493423462
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_SuspensionFront",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -1.1444091796875e-05,
+        -1.7371089458465576,
+        0.5076597929000854
+      ],
+      "worldOrigin": [
+        -1.1444091796875e-05,
+        -1.7371089458465576,
+        0.5076597929000854
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 10728,
+      "polygons": 10400,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_SuspensionFront",
+      "materials": [
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_UndercarriageTrim",
+        "KB3D_CEV_WheelRimsA"
+      ],
+      "bounds": {
+        "min": [
+          -1.109424352645874,
+          -2.1126010417938232,
+          0.21393579244613647
+        ],
+        "max": [
+          1.1094012260437012,
+          -1.3616169691085815,
+          0.8013837337493896
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_SuspensionRear",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -1.1444091796875e-05,
+        1.7142291069030762,
+        0.5337566137313843
+      ],
+      "worldOrigin": [
+        -1.1444091796875e-05,
+        1.7142291069030762,
+        0.5337566137313843
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 13907,
+      "polygons": 13426,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_SuspensionRear",
+      "materials": [
+        "KB3D_CEV_RubberTrim",
+        "KB3D_CEV_UndercarriageTrim",
+        "KB3D_CEV_WheelRimsA"
+      ],
+      "bounds": {
+        "min": [
+          -1.1061936616897583,
+          1.1119213104248047,
+          0.2143000364303589
+        ],
+        "max": [
+          1.1061707735061646,
+          2.3165369033813477,
+          0.8532131910324097
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_WiperA",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -0.34677839279174805,
+        -1.320109486579895,
+        1.4011399745941162
+      ],
+      "worldOrigin": [
+        -0.34677839279174805,
+        -1.320109486579895,
+        1.4011399745941162
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 252,
+      "polygons": 234,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_WiperA",
+      "materials": [
+        "KB3D_CEV_MidSuvExteriorBody"
+      ],
+      "bounds": {
+        "min": [
+          -0.7947916388511658,
+          -1.4164676666259766,
+          1.3457123041152954
+        ],
+        "max": [
+          0.10123521089553833,
+          -1.2237513065338135,
+          1.4565675258636475
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_WiperB",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        0.3508419990539551,
+        -1.3427040576934814,
+        1.3910787105560303
+      ],
+      "worldOrigin": [
+        0.3508419990539551,
+        -1.3427040576934814,
+        1.3910787105560303
+      ],
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 252,
+      "polygons": 234,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_WiperB",
+      "materials": [
+        "KB3D_CEV_MidSuvExteriorBody"
+      ],
+      "bounds": {
+        "min": [
+          -0.10680228471755981,
+          -1.401025652885437,
+          1.3263133764266968
+        ],
+        "max": [
+          0.8084861040115356,
+          -1.2843825817108154,
+          1.4558439254760742
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "KB3D_CEV_VehicMidSUV_A_WiperC",
+      "type": "MESH",
+      "parent": "KB3D_CEV_VehicMidSUV_A_grp",
+      "location": [
+        -0.33804941177368164,
+        2.538177967071533,
+        1.5812349319458008
+      ],
+      "worldOrigin": [
+        -0.33804941177368164,
+        2.538177967071533,
+        1.5812349319458008
+      ],
+      "rotation": [
+        -1.7484555314695172e-07,
+        6.31411841603588e-24,
+        1.7484555314695172e-07
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": true,
+      "vertices": 228,
+      "polygons": 210,
+      "mesh": "KB3D_CEV_VehicMidSUV_A_WiperC",
+      "materials": [
+        "KB3D_CEV_MidSuvExteriorBody"
+      ],
+      "bounds": {
+        "min": [
+          -0.6948250532150269,
+          2.483341932296753,
+          1.549384355545044
+        ],
+        "max": [
+          0.018726984038949013,
+          2.5930137634277344,
+          1.6130855083465576
+        ]
+      },
+      "modifiers": [],
+      "vertexGroups": []
+    },
+    {
+      "name": "Light",
+      "type": "LIGHT",
+      "parent": null,
+      "location": [
+        4.076245307922363,
+        1.0054539442062378,
+        5.903861999511719
+      ],
+      "worldOrigin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.6503279805183411,
+        0.055217113345861435,
+        1.8663908243179321
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible": false
+    }
+  ],
+  "collections": [
+    {
+      "name": "_Cameras",
+      "objects": [
+        "Camera"
+      ]
+    },
+    {
+      "name": "_Lights",
+      "objects": [
+        "Light"
+      ]
+    },
+    {
+      "name": "Geometry",
+      "objects": [
+        "KB3D_CEV_VehicMidSUV_A_grp",
+        "KB3D_CEV_VehicMidSUV_A_FrontWheelL",
+        "KB3D_CEV_VehicMidSUV_A_RearWheelL",
+        "KB3D_CEV_VehicMidSUV_A_Shifter",
+        "KB3D_CEV_VehicMidSUV_A_WiperA",
+        "KB3D_CEV_VehicMidSUV_A_WiperB",
+        "KB3D_CEV_VehicMidSUV_A_FrontDoorR",
+        "KB3D_CEV_VehicMidSUV_A_RearDoorL",
+        "KB3D_CEV_VehicMidSUV_A_Hatch",
+        "KB3D_CEV_VehicMidSUV_A_FrontDoorL",
+        "KB3D_CEV_VehicMidSUV_A_RearDoorR",
+        "KB3D_CEV_VehicMidSUV_A_WiperC",
+        "KB3D_CEV_VehicMidSUV_A_SteeringWheel",
+        "KB3D_CEV_VehicMidSUV_A_RearWheelR",
+        "KB3D_CEV_VehicMidSUV_A_FrontWheelR",
+        "KB3D_CEV_VehicMidSUV_A_SuspensionFront",
+        "KB3D_CEV_VehicMidSUV_A_SuspensionRear",
+        "KB3D_CEV_VehicMidSUV_A_Body"
+      ]
+    }
+  ],
+  "images": [
+    {
+      "name": "KB3D_CEV_CarAtlas_basecolor.png",
+      "path": "//../textures/KB3D_CEV_CarAtlas_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarAtlas_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarAtlas_emissive.png",
+      "path": "//../textures/KB3D_CEV_CarAtlas_emissive.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarAtlas_emissive.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarAtlas_height.png",
+      "path": "//../textures/KB3D_CEV_CarAtlas_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarAtlas_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarAtlas_metallic.png",
+      "path": "//../textures/KB3D_CEV_CarAtlas_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarAtlas_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarAtlas_normal.png",
+      "path": "//../textures/KB3D_CEV_CarAtlas_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarAtlas_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarAtlas_roughness.png",
+      "path": "//../textures/KB3D_CEV_CarAtlas_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarAtlas_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarsLicensePlates_basecolor.png",
+      "path": "//../textures/KB3D_CEV_CarsLicensePlates_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarsLicensePlates_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarsLicensePlates_height.png",
+      "path": "//../textures/KB3D_CEV_CarsLicensePlates_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarsLicensePlates_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarsLicensePlates_metallic.png",
+      "path": "//../textures/KB3D_CEV_CarsLicensePlates_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarsLicensePlates_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarsLicensePlates_normal.png",
+      "path": "//../textures/KB3D_CEV_CarsLicensePlates_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarsLicensePlates_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_CarsLicensePlates_roughness.png",
+      "path": "//../textures/KB3D_CEV_CarsLicensePlates_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_CarsLicensePlates_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltA_basecolor.png",
+      "path": "//../textures/KB3D_CEV_FeltA_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltA_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltA_height.png",
+      "path": "//../textures/KB3D_CEV_FeltA_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltA_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltA_metallic.png",
+      "path": "//../textures/KB3D_CEV_FeltA_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltA_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltA_normal.png",
+      "path": "//../textures/KB3D_CEV_FeltA_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltA_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltA_roughness.png",
+      "path": "//../textures/KB3D_CEV_FeltA_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltA_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltB_basecolor.png",
+      "path": "//../textures/KB3D_CEV_FeltB_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltB_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltB_height.png",
+      "path": "//../textures/KB3D_CEV_FeltB_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltB_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltB_metallic.png",
+      "path": "//../textures/KB3D_CEV_FeltB_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltB_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltB_normal.png",
+      "path": "//../textures/KB3D_CEV_FeltB_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltB_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_FeltB_roughness.png",
+      "path": "//../textures/KB3D_CEV_FeltB_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_FeltB_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_GlassMirror_basecolor.png",
+      "path": "//../textures/KB3D_CEV_GlassMirror_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_GlassMirror_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_GlassMirror_height.png",
+      "path": "//../textures/KB3D_CEV_GlassMirror_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_GlassMirror_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_GlassMirror_metallic.png",
+      "path": "//../textures/KB3D_CEV_GlassMirror_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_GlassMirror_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_GlassMirror_normal.png",
+      "path": "//../textures/KB3D_CEV_GlassMirror_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_GlassMirror_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_GlassMirror_roughness.png",
+      "path": "//../textures/KB3D_CEV_GlassMirror_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_GlassMirror_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_MidSuvExteriorBody_basecolor.png",
+      "path": "//../textures/KB3D_CEV_MidSuvExteriorBody_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_MidSuvExteriorBody_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_MidSuvExteriorBody_emissive.png",
+      "path": "//../textures/KB3D_CEV_MidSuvExteriorBody_emissive.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_MidSuvExteriorBody_emissive.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_MidSuvExteriorBody_height.png",
+      "path": "//../textures/KB3D_CEV_MidSuvExteriorBody_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_MidSuvExteriorBody_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_MidSuvExteriorBody_metallic.png",
+      "path": "//../textures/KB3D_CEV_MidSuvExteriorBody_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_MidSuvExteriorBody_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_MidSuvExteriorBody_normal.png",
+      "path": "//../textures/KB3D_CEV_MidSuvExteriorBody_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_MidSuvExteriorBody_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_MidSuvExteriorBody_opacity.png",
+      "path": "//../textures/KB3D_CEV_MidSuvExteriorBody_opacity.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_MidSuvExteriorBody_opacity.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_MidSuvExteriorBody_roughness.png",
+      "path": "//../textures/KB3D_CEV_MidSuvExteriorBody_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_MidSuvExteriorBody_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTileableA_basecolor.png",
+      "path": "//../textures/KB3D_CEV_PlasticTileableA_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTileableA_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTileableA_height.png",
+      "path": "//../textures/KB3D_CEV_PlasticTileableA_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTileableA_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTileableA_metallic.png",
+      "path": "//../textures/KB3D_CEV_PlasticTileableA_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTileableA_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTileableA_normal.png",
+      "path": "//../textures/KB3D_CEV_PlasticTileableA_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTileableA_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTileableA_roughness.png",
+      "path": "//../textures/KB3D_CEV_PlasticTileableA_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTileableA_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTrimA_basecolor.png",
+      "path": "//../textures/KB3D_CEV_PlasticTrimA_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTrimA_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTrimA_height.png",
+      "path": "//../textures/KB3D_CEV_PlasticTrimA_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTrimA_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTrimA_metallic.png",
+      "path": "//../textures/KB3D_CEV_PlasticTrimA_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTrimA_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTrimA_normal.png",
+      "path": "//../textures/KB3D_CEV_PlasticTrimA_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTrimA_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_PlasticTrimA_roughness.png",
+      "path": "//../textures/KB3D_CEV_PlasticTrimA_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_PlasticTrimA_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_RubberTrim_basecolor.png",
+      "path": "//../textures/KB3D_CEV_RubberTrim_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_RubberTrim_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_RubberTrim_height.png",
+      "path": "//../textures/KB3D_CEV_RubberTrim_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_RubberTrim_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_RubberTrim_metallic.png",
+      "path": "//../textures/KB3D_CEV_RubberTrim_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_RubberTrim_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_RubberTrim_normal.png",
+      "path": "//../textures/KB3D_CEV_RubberTrim_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_RubberTrim_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_RubberTrim_roughness.png",
+      "path": "//../textures/KB3D_CEV_RubberTrim_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_RubberTrim_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_SeatsDriverATrim_basecolor.png",
+      "path": "//../textures/KB3D_CEV_SeatsDriverATrim_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_SeatsDriverATrim_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_SeatsDriverATrim_height.png",
+      "path": "//../textures/KB3D_CEV_SeatsDriverATrim_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_SeatsDriverATrim_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_SeatsDriverATrim_metallic.png",
+      "path": "//../textures/KB3D_CEV_SeatsDriverATrim_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_SeatsDriverATrim_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_SeatsDriverATrim_normal.png",
+      "path": "//../textures/KB3D_CEV_SeatsDriverATrim_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_SeatsDriverATrim_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_SeatsDriverATrim_roughness.png",
+      "path": "//../textures/KB3D_CEV_SeatsDriverATrim_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_SeatsDriverATrim_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TapesTrimA_basecolor.png",
+      "path": "//../textures/KB3D_CEV_TapesTrimA_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TapesTrimA_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TapesTrimA_height.png",
+      "path": "//../textures/KB3D_CEV_TapesTrimA_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TapesTrimA_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TapesTrimA_metallic.png",
+      "path": "//../textures/KB3D_CEV_TapesTrimA_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TapesTrimA_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TapesTrimA_normal.png",
+      "path": "//../textures/KB3D_CEV_TapesTrimA_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TapesTrimA_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TapesTrimA_opacity.png",
+      "path": "//../textures/KB3D_CEV_TapesTrimA_opacity.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TapesTrimA_opacity.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TapesTrimA_roughness.png",
+      "path": "//../textures/KB3D_CEV_TapesTrimA_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TapesTrimA_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TiresSedans_basecolor.png",
+      "path": "//../textures/KB3D_CEV_TiresSedans_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TiresSedans_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TiresSedans_height.png",
+      "path": "//../textures/KB3D_CEV_TiresSedans_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TiresSedans_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TiresSedans_metallic.png",
+      "path": "//../textures/KB3D_CEV_TiresSedans_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TiresSedans_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TiresSedans_normal.png",
+      "path": "//../textures/KB3D_CEV_TiresSedans_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TiresSedans_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TiresSedans_roughness.png",
+      "path": "//../textures/KB3D_CEV_TiresSedans_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TiresSedans_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TranslElemMidSUV_basecolor.png",
+      "path": "//../textures/KB3D_CEV_TranslElemMidSUV_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TranslElemMidSUV_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TranslElemMidSUV_emissive.png",
+      "path": "//../textures/KB3D_CEV_TranslElemMidSUV_emissive.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TranslElemMidSUV_emissive.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TranslElemMidSUV_height.png",
+      "path": "//../textures/KB3D_CEV_TranslElemMidSUV_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TranslElemMidSUV_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TranslElemMidSUV_metallic.png",
+      "path": "//../textures/KB3D_CEV_TranslElemMidSUV_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TranslElemMidSUV_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TranslElemMidSUV_normal.png",
+      "path": "//../textures/KB3D_CEV_TranslElemMidSUV_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TranslElemMidSUV_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TranslElemMidSUV_opacity.png",
+      "path": "//../textures/KB3D_CEV_TranslElemMidSUV_opacity.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TranslElemMidSUV_opacity.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_TranslElemMidSUV_roughness.png",
+      "path": "//../textures/KB3D_CEV_TranslElemMidSUV_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_TranslElemMidSUV_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_UndercarriageTrim_basecolor.png",
+      "path": "//../textures/KB3D_CEV_UndercarriageTrim_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_UndercarriageTrim_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_UndercarriageTrim_height.png",
+      "path": "//../textures/KB3D_CEV_UndercarriageTrim_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_UndercarriageTrim_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_UndercarriageTrim_metallic.png",
+      "path": "//../textures/KB3D_CEV_UndercarriageTrim_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_UndercarriageTrim_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_UndercarriageTrim_normal.png",
+      "path": "//../textures/KB3D_CEV_UndercarriageTrim_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_UndercarriageTrim_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_UndercarriageTrim_roughness.png",
+      "path": "//../textures/KB3D_CEV_UndercarriageTrim_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_UndercarriageTrim_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WheelRimsA_basecolor.png",
+      "path": "//../textures/KB3D_CEV_WheelRimsA_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WheelRimsA_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WheelRimsA_height.png",
+      "path": "//../textures/KB3D_CEV_WheelRimsA_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WheelRimsA_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WheelRimsA_metallic.png",
+      "path": "//../textures/KB3D_CEV_WheelRimsA_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WheelRimsA_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WheelRimsA_normal.png",
+      "path": "//../textures/KB3D_CEV_WheelRimsA_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WheelRimsA_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WheelRimsA_roughness.png",
+      "path": "//../textures/KB3D_CEV_WheelRimsA_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WheelRimsA_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WindowFritsTrim_basecolor.png",
+      "path": "//../textures/KB3D_CEV_WindowFritsTrim_basecolor.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WindowFritsTrim_basecolor.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WindowFritsTrim_height.png",
+      "path": "//../textures/KB3D_CEV_WindowFritsTrim_height.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WindowFritsTrim_height.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WindowFritsTrim_metallic.png",
+      "path": "//../textures/KB3D_CEV_WindowFritsTrim_metallic.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WindowFritsTrim_metallic.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WindowFritsTrim_normal.png",
+      "path": "//../textures/KB3D_CEV_WindowFritsTrim_normal.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WindowFritsTrim_normal.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WindowFritsTrim_opacity.png",
+      "path": "//../textures/KB3D_CEV_WindowFritsTrim_opacity.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WindowFritsTrim_opacity.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "KB3D_CEV_WindowFritsTrim_roughness.png",
+      "path": "//../textures/KB3D_CEV_WindowFritsTrim_roughness.png",
+      "resolved": "/Users/mitcha/Downloads/asset/../textures/KB3D_CEV_WindowFritsTrim_roughness.png",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Render Result",
+      "path": "",
+      "resolved": "",
+      "packed": false,
+      "exists": false,
+      "size": [
+        0,
+        0
+      ]
+    }
+  ],
+  "actions": [],
+  "units": {
+    "system": "METRIC",
+    "scale": 1.0
+  }
+}

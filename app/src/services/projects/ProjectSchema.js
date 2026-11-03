@@ -1,7 +1,42 @@
 export const PROJECT_FORMAT = 'rayzee-project';
 export const PROJECT_SCHEMA_VERSION = 1;
+export const WORLD_UNITS = Object.freeze( { length: 'metre', metresPerUnit: 1 } );
 export const PROJECT_FILE_EXTENSION = '.rayzee';
 export const PROJECT_MIME_TYPE = 'application/vnd.rayzee.project+json';
+
+const DEFAULT_WORKSPACE = Object.freeze( {
+	panelLayout: [ 20, 60, 20 ],
+	appMode: 'preview',
+	activeTab: 'pathtracer',
+	viewport: { mode: 'auto', scale: 100 },
+	editorView: { mode: 'perspective', style: 'solid', gridVisible: true, views: {} },
+	selectedEntity: null,
+} );
+const EDITOR_VIEW_MODES = new Set( [ 'perspective', 'top', 'front', 'side' ] );
+const EDITOR_VIEW_STYLES = new Set( [ 'solid', 'wireframe' ] );
+
+const normalizeWorkspace = workspace => {
+
+	const source = workspace && typeof workspace === 'object' ? workspace : {};
+	const editorView = source.editorView && typeof source.editorView === 'object' ? source.editorView : {};
+	const editorMode = EDITOR_VIEW_MODES.has( editorView.mode ) ? editorView.mode : DEFAULT_WORKSPACE.editorView.mode;
+	const editorStyle = EDITOR_VIEW_STYLES.has( editorView.style ) ? editorView.style : DEFAULT_WORKSPACE.editorView.style;
+	return {
+		...DEFAULT_WORKSPACE,
+		...source,
+		panelLayout: Array.isArray( source.panelLayout ) ? [ ...source.panelLayout ] : [ ...DEFAULT_WORKSPACE.panelLayout ],
+		viewport: { ...DEFAULT_WORKSPACE.viewport, ...( source.viewport || {} ) },
+		editorView: {
+			...DEFAULT_WORKSPACE.editorView,
+			...editorView,
+			mode: editorMode,
+			gridVisible: editorView.gridVisible !== false,
+			style: editorStyle,
+			views: editorView.views && typeof editorView.views === 'object' ? editorView.views : {},
+		},
+	};
+
+};
 
 const clone = value => typeof structuredClone === 'function'
 	? structuredClone( value )
@@ -36,6 +71,7 @@ export function createProjectDocument( {
 		updatedAt: now,
 		revision: 0,
 		scene: {
+			units: { ...WORLD_UNITS },
 			assets: primaryCatalogId ? [ {
 				instanceId: createAssetId(),
 				catalogId: primaryCatalogId,
@@ -51,13 +87,7 @@ export function createProjectDocument( {
 		cameras: null,
 		led: [],
 		animation: { selectedClip: 0, speed: 1, loop: true, loopCount: 1 },
-		workspace: {
-			panelLayout: [ 20, 60, 20 ],
-			appMode: 'preview',
-			activeTab: 'pathtracer',
-			viewport: { mode: 'auto', scale: 100 },
-			selectedEntity: null,
-		},
+		workspace: normalizeWorkspace(),
 		extensions: {},
 	};
 
@@ -92,6 +122,13 @@ export function migrateProjectDocument( input ) {
 
 	}
 
+	// Optional workspace fields can be added without changing the portable scene
+	// schema. Backfill them here so already-stored version-1 projects and the
+	// bundled default hydrate through the same complete shape as new projects.
+	document.workspace = normalizeWorkspace( document.workspace );
+	// Legacy projects already used these coordinates; backfill metadata only.
+	if ( document.scene && document.scene.units === undefined ) document.scene.units = { ...WORLD_UNITS };
+
 	validateProjectDocument( document );
 	return document;
 
@@ -104,6 +141,7 @@ export function validateProjectDocument( document ) {
 	if ( typeof document.projectId !== 'string' || ! document.projectId ) throw new Error( 'Project ID is missing.' );
 	if ( typeof document.name !== 'string' || ! document.name.trim() ) throw new Error( 'Project name is missing.' );
 	if ( ! document.scene || ! Array.isArray( document.scene.assets ) ) throw new Error( 'Project scene data is invalid.' );
+	if ( document.scene.units !== undefined && ( document.scene.units?.length !== WORLD_UNITS.length || document.scene.units?.metresPerUnit !== 1 ) ) throw new Error( 'Unsupported world units. Convert this scene to metres before importing.' );
 	if ( ! Array.isArray( document.led ) ) throw new Error( 'Project LED data is invalid.' );
 	const instanceIds = new Set();
 	for ( const asset of document.scene.assets ) {

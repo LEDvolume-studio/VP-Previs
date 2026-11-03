@@ -1,0 +1,90 @@
+[
+  {
+    "lightId": "key",
+    "type": "directional",
+    "transform": {
+      "position": [
+        1,
+        2.406245204324634,
+        -0.6126751898278944
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "visible": true
+    },
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "color": [
+      1,
+      1,
+      1
+    ],
+    "intensity": 28.5,
+    "emission": {
+      "temperature": 6500,
+      "useTemperature": false,
+      "exposure": 4.2
+    },
+    "parameters": {
+      "angle": 0.07243116395776468
+    }
+  },
+  {
+    "lightId": "fill",
+    "type": "spot",
+    "transform": {
+      "position": [
+        1.3864989221129065,
+        1.5720899240845019,
+        -0.6858176588188198
+      ],
+      "quaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "visible": true
+    },
+    "target": [
+      0.6993782178276259,
+      1.4498575492587262,
+      -1.4020050534907387
+    ],
+    "color": [
+      1,
+      1,
+      1
+    ],
+    "intensity": 1895,
+    "emission": {
+      "temperature": 6500,
+      "useTemperature": false,
+      "exposure": 6.9
+    },
+    "parameters": {
+      "angle": 0.2617993877991494,
+      "distance": 0,
+      "decay": 2,
+      "radius": 0,
+      "penumbra": 0
+    }
+  }
+]

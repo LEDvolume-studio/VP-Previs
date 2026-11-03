@@ -1,15 +1,20 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useMemo } from 'react';
 import DimensionDisplay from './DimensionDisplay';
 import AutoFocusOverlay from './AutoFocusOverlay';
+import FrameRatioOverlay from './FrameRatioOverlay';
 import StatsMeter from './StatsMeter';
 import StatsPanel from './StatsPanel';
 import HeatmapOverlay from './HeatmapOverlay';
 import SaveControls from './SaveControls';
 import ViewportToolbar from './ViewportToolbar';
+import EditorViewControls from './EditorViewControls';
+import EditorRulerOverlay from './EditorRulerOverlay';
+import CameraSpeedControl from './CameraSpeedControl';
 import InteractionContextMenu from '@/components/ui/InteractionContextMenu';
 import { useToast } from '@/hooks/use-toast';
 import { useStore, usePathTracerStore, useCameraStore, useAnimationStore, useLightStore } from '@/store';
 import { saveRender } from '@/utils/database';
+import { installViewportResumeRecovery } from '@/utils/viewportResume';
 import { useAutoFitScale } from '@/hooks/useAutoFitScale';
 import { generateViewportStyles } from '@/utils/viewport';
 import { PathTracerApp } from 'rayzee';
@@ -51,6 +56,12 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 	const appMode = useStore( state => state.appMode );
 	const showAsvgfHeatmap = usePathTracerStore( state => state.showAsvgfHeatmap );
 	const savedViewport = useProjectStore( state => state.activeProject?.workspace?.viewport );
+	const savedEditorView = useProjectStore( state => state.activeProject?.workspace?.editorView );
+	const activeProjectId = useProjectStore( state => state.activeProject?.projectId );
+	const [ editorViewMode, setEditorViewMode ] = useState( savedEditorView?.mode || 'perspective' );
+	const [ rulerEnabled, setRulerEnabled ] = useState( false );
+	const [ rulerTemporary, setRulerTemporary ] = useState( false );
+	const [ rulerClearSignal, setRulerClearSignal ] = useState( 0 );
 
 	// Auto-fit scaling logic - only initialize after canvases are ready
 	const {
@@ -64,7 +75,7 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 		canvasWidth,
 		canvasHeight,
 		padding: 40,
-		minScale: 25,
+		minScale: 1,
 		maxScale: 200,
 		enabled: canvasReady, // Only enable auto-fit after canvases are ready
 		persistedViewport: savedViewport,
@@ -193,10 +204,15 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 
 				const app = new PathTracerApp( canvasRef.current, {
 					container: containerRef.current,
+					// The store owns output resolution; window layout only changes display size.
+					autoResize: false,
 				} );
 				appRef.current = app;
 				setLoading( { isLoading: true, title: "Starting", status: "Initializing WebGPU...", progress: 30 } );
 				await app.init();
+				// The app intentionally opens in raster mode. Set the engine before the
+				// LED coordinator snapshots the preferred renderer and before animation starts.
+				app.pathTracerEnabled = usePathTracerStore.getState().enablePathTracer;
 
 				// Pre-load the bundled spot-light gobo + IES profile libraries so
 				// they're ready by the time the user opens the Lights tab.
@@ -223,6 +239,11 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 
 				// Bridge engine events → Zustand stores
 				engineCleanupRef.current = connectEngineToStore( app, { useStore, useCameraStore, usePathTracerStore, useAnimationStore, useLightStore } );
+				usePathTracerStore.getState().setPathTracerActive( app.pathTracerEnabled );
+
+				// Match the app's initial final-denoise default before project hydration.
+				// Project restoration may subsequently override this setting.
+				app.denoisingManager?.setOIDNEnabled( usePathTracerStore.getState().enableOIDN );
 
 				setLoading( { isLoading: true, title: "Starting", status: "Restoring project...", progress: 60 } );
 				await projectSession.initialize();
@@ -234,10 +255,20 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 
 			};
 
+			let startupFailed = false;
 			initApp()
 				.catch( ( err ) => {
 
+					startupFailed = true;
 					console.error( "Error initializing PathTracerApp:", err );
+					if ( ! useStore.getState().loading.failed ) setLoading( {
+						isLoading: true,
+						failed: true,
+						failedTitle: 'Failed to load application',
+						status: err.message || 'Application startup failed.',
+						progress: 0,
+						canCancel: false,
+					} );
 					toast( {
 						title: "Failed to load application",
 						description: err.message || "Uh oh!! Something went wrong. Please try again.",
@@ -248,7 +279,7 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 				.finally( () => {
 
 					const resetLoadingFn = useStore.getState().resetLoading;
-					resetLoadingFn();
+					if ( ! startupFailed ) resetLoadingFn();
 
 					isInitialized.current = true;
 					setIsAppInitialized( true );
@@ -261,6 +292,13 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 
 	}, [ setLoading, toast ] );
 
+	useEffect( () => {
+
+		if ( ! isAppInitialized || ! appRef.current ) return;
+		return installViewportResumeRecovery( appRef.current );
+
+	}, [ isAppInitialized ] );
+
 	// Disable select mode when leaving preview mode
 	useEffect( () => {
 
@@ -272,6 +310,16 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 		}
 
 	}, [ appMode ] );
+
+	useEffect( () => {
+
+		if ( viewportMode !== 'preview' && appRef.current?.editorViewManager?.active ) {
+
+			appRef.current.setEditorView( 'perspective' );
+
+		}
+
+	}, [ viewportMode ] );
 
 	// Compute whether to show save controls
 	const shouldShowSaveControls = useMemo( () => {
@@ -287,13 +335,17 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 	}, [ isRenderComplete, isDenoising, isUpscaling, viewportMode, isAppInitialized ] );
 
 	// Memoize style objects
-	const { wrapperStyle, containerStyle, canvasStyle } = useMemo( () =>
-		generateViewportStyles( canvasWidth, canvasHeight, viewportScale ),
-	[ canvasWidth, canvasHeight, viewportScale ]
-	);
+	const isEditorView = viewportMode === 'preview' && editorViewMode !== 'perspective';
+	const { wrapperStyle, containerStyle, canvasStyle } = useMemo( () => {
+
+		const styles = generateViewportStyles( canvasWidth, canvasHeight, viewportScale );
+		if ( isEditorView ) styles.canvasStyle.cursor = rulerEnabled || rulerTemporary ? 'crosshair' : 'auto';
+		return styles;
+
+	}, [ canvasWidth, canvasHeight, viewportScale, isEditorView, rulerEnabled, rulerTemporary ] );
 
 	return (
-		<div ref={viewportRef} className="flex justify-center items-center h-full overflow-scroll" >
+		<div ref={viewportRef} className="relative flex justify-center items-center h-full overflow-scroll" >
 
 			<div ref={viewportWrapperRef} className="relative shadow-2xl transition-none" style={wrapperStyle} >
 				<div ref={containerRef} className={`relative`} style={containerStyle} >
@@ -303,11 +355,24 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 						height={canvasHeight}
 						style={canvasStyle}
 					/>
-					<AutoFocusOverlay containerRef={containerRef} />
+					{isAppInitialized && viewportMode === 'preview' && (
+						<EditorRulerOverlay
+							key={activeProjectId || 'scratch'}
+							app={appRef.current}
+							canvas={canvasRef.current}
+							mode={editorViewMode}
+							enabled={rulerEnabled}
+							onTemporaryChange={setRulerTemporary}
+							clearSignal={rulerClearSignal}
+						/>
+					)}
+					{! isEditorView && <FrameRatioOverlay />}
+					{! isEditorView && <AutoFocusOverlay containerRef={containerRef} />}
 				</div>
 			</div>
 
-			<DimensionDisplay dimension={renderResolution} />
+			{! isEditorView && <DimensionDisplay dimension={renderResolution} />}
+			{isAppInitialized && ! isEditorView && <CameraSpeedControl />}
 			<StatsMeter viewportMode={viewportMode} />
 			{isAppInitialized && (
 				<>
@@ -326,13 +391,26 @@ const Viewport3D = forwardRef( ( { viewportMode = "preview" }, ref ) => {
 				<SaveControls onSave={handleSave} onDiscard={handleDiscard} />
 			)}
 
-			{canvasReady && (
+			{canvasReady && ! isEditorView && (
 				<ViewportToolbar
 					onResize={handleViewportResize}
 					viewportWrapperRef={viewportRef}
 					autoFitScale={autoFitScale}
 					isManualScale={isManualScale}
 					onResetToAutoFit={handleResetToAutoFit}
+				/>
+			)}
+
+			{isAppInitialized && viewportMode === 'preview' && (
+				<EditorViewControls
+					app={appRef.current}
+					projectId={activeProjectId}
+					savedState={savedEditorView}
+					onModeChange={setEditorViewMode}
+					rulerEnabled={rulerEnabled}
+					rulerTemporary={rulerTemporary}
+					onRulerEnabledChange={setRulerEnabled}
+					onClearRulers={() => setRulerClearSignal( signal => signal + 1 )}
 				/>
 			)}
 

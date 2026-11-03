@@ -40,10 +40,25 @@ export function connectEngineToStore( engine, { useStore, useCameraStore, usePat
 		useStore.getState().setCompletionReason( null );
 
 	} );
+	on( EngineEvents.PATH_TRACER_ENABLED_CHANGED, ( e ) => {
+
+		usePathTracerStore.getState().setPathTracerActive( e.enabled );
+
+	} );
 
 	// ── Denoiser ─────────────────────────────────────────────
-	on( EngineEvents.DENOISING_START, () => useStore.getState().setIsDenoising( true ) );
-	on( EngineEvents.DENOISING_END, () => useStore.getState().setIsDenoising( false ) );
+	// `continuous` marks a cadence denoise of the still-accumulating preview. Those run many times
+	// a second and would strobe the "Denoising" badge; only the denoise that closes a render is status.
+	on( EngineEvents.DENOISING_START, e => {
+
+		if ( ! e?.continuous ) useStore.getState().setIsDenoising( true );
+
+	} );
+	on( EngineEvents.DENOISING_END, e => {
+
+		if ( ! e?.continuous ) useStore.getState().setIsDenoising( false );
+
+	} );
 
 	// ── Upscaler ─────────────────────────────────────────────
 	on( EngineEvents.UPSCALING_START, () => {
@@ -73,6 +88,9 @@ export function connectEngineToStore( engine, { useStore, useCameraStore, usePat
 
 		const { type: _type, target: _target, ...loadingState } = e;
 		const state = useStore.getState();
+		// Updates merge, so a previous load's failure would otherwise stick to the next one and
+		// show the error overlay over a load that is going fine.
+		if ( loadingState.isLoading === true && loadingState.failed === undefined ) loadingState.failed = false;
 		state.setLoading( { ...state.loading, ...loadingState } );
 
 	} );
@@ -163,12 +181,15 @@ export function connectEngineToStore( engine, { useStore, useCameraStore, usePat
 
 		if ( e.effects ) {
 
+			const projectionFocalLength = engine.cameraManager.active.getFocalLength();
+			engine.settings.set( 'focalLength', projectionFocalLength, { reset: false } );
+
 			cam.applyCameraEffects( {
 				fov: e.fov,
 				enableDOF: e.effects.enableDOF,
 				focusDistance: e.effects.focusDistance,
 				aperture: e.effects.aperture,
-				focalLength: e.effects.focalLength,
+				focalLength: projectionFocalLength,
 				apertureScale: e.effects.apertureScale,
 				anamorphicRatio: e.effects.anamorphicRatio,
 				autoFocusMode: e.effects.autoFocusMode,

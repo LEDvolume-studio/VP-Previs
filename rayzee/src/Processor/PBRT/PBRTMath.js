@@ -17,7 +17,35 @@ export function identity() {
 
 }
 
+/** Determinant of the upper-left 3x3 basis. Negative means the transform mirrors. */
+export function determinant3( m ) {
+
+	return m[ 0 ] * ( m[ 5 ] * m[ 10 ] - m[ 6 ] * m[ 9 ] )
+		- m[ 4 ] * ( m[ 1 ] * m[ 10 ] - m[ 2 ] * m[ 9 ] )
+		+ m[ 8 ] * ( m[ 1 ] * m[ 6 ] - m[ 2 ] * m[ 5 ] );
+
+}
+
 /** Matrix product a*b (applies b first, then a, to a column vector). */
+/** a*b written into `out`, so a hot loop over millions of placements allocates nothing. */
+export function multiplyInto( out, a, aOff, b ) {
+
+	for ( let c = 0; c < 4; c ++ ) {
+
+		const b0 = b[ c * 4 ], b1 = b[ c * 4 + 1 ], b2 = b[ c * 4 + 2 ], b3 = b[ c * 4 + 3 ];
+		for ( let r = 0; r < 4; r ++ ) {
+
+			out[ c * 4 + r ] = a[ aOff + r ] * b0 + a[ aOff + 4 + r ] * b1
+				+ a[ aOff + 8 + r ] * b2 + a[ aOff + 12 + r ] * b3;
+
+		}
+
+	}
+
+	return out;
+
+}
+
 export function multiply( a, b ) {
 
 	const a11 = a[ 0 ], a21 = a[ 1 ], a31 = a[ 2 ], a41 = a[ 3 ];
