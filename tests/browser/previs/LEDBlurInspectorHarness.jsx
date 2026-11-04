@@ -14,6 +14,7 @@ export function checkInspectorLoadingStates( host ) {
 		if ( ! host.textContent.includes( 'Choose a timeline shot' ) ) throw new Error( 'Inspector failed to render its loading state.' );
 
 	}
+
 	flushSync( () => root.unmount() );
 
 }
