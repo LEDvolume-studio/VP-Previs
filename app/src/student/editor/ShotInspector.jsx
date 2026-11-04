@@ -88,7 +88,7 @@ export default function ShotInspector( { shot, capabilities, onEdit, onFocalLeng
 	const walls = ( shot?.snapshot.ledWalls || [] ).filter( item => item.presentationVersion === 1 );
 	const wall = walls.find( item => item.wallId === selectedWall ) || walls[ 0 ];
 	const blur = wall?.blur || DEFAULT_LED_BLUR;
-	const comparison = blurComparison?.shotId === shot?.shotId && blurComparison.wallId === wall?.wallId ? blurComparison : null;
+	const comparison = blurComparison && shot && wall && blurComparison.shotId === shot.shotId && blurComparison.wallId === wall.wallId ? blurComparison : null;
 	const camera = shot?.snapshot.camera;
 	const locked = disabled || ! shot || ! capabilities;
 	const apply = async build => {

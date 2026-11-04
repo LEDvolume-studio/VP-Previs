@@ -1,8 +1,22 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 import ShotInspector from '../../../app/src/student/editor/ShotInspector.jsx';
 import { applyStudentCommand } from '../../../app/src/previs/domain/StudentCommands.js';
 import '../../../app/src/student/editor/editor.css';
+
+export function checkInspectorLoadingStates( host ) {
+
+	const root = createRoot( host );
+	for ( const props of [ {}, { shot: null, blurComparison: null }, { blurComparison: { shotId: 'previous-shot', wallId: 'previous-wall', results: [] } } ] ) {
+
+		flushSync( () => root.render( <ShotInspector {...props} /> ) );
+		if ( ! host.textContent.includes( 'Choose a timeline shot' ) ) throw new Error( 'Inspector failed to render its loading state.' );
+
+	}
+	flushSync( () => root.unmount() );
+
+}
 
 export function mountInspector( view, project, host ) {
 
